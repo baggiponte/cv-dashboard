@@ -70,6 +70,8 @@ with st.expander("Click to see the list of photos paths on remote folder"):
 photos_list = read_photos_list_from_dropbox(dbx)
 
 metadata_df = read_metadata_df_from_dropbox()
+os.remove("inner_join-roofs_images_obstacles.csv")
+
 metadata_df = metadata_df[metadata_df.imageURL.isin(dropbbox_list_files_df.item_name.values)]
 
 with st.expander("Click to see the metadata table for available photos"):
@@ -99,6 +101,8 @@ test_photo_name = metadata_df.loc[lambda df: df["roof_id"] == roof_id, "imageURL
 try:
 
     im_bgr, im_gs = load_photo_from_dropbox(test_photo_name)
+
+    os.remove(test_photo_name)
 
     im_k2labeled = draw_boundaries(
         im_bgr, pixel_coord_roof, pixel_coord_obs
