@@ -70,7 +70,8 @@ with st.expander("Click to see the list of photos paths on remote folder"):
 photos_list = read_photos_list_from_dropbox(dbx)
 
 metadata_df = read_metadata_df_from_dropbox()
-os.remove("inner_join-roofs_images_obstacles.csv")
+if os.path.exists("inner_join-roofs_images_obstacles.csv"):
+    os.remove("inner_join-roofs_images_obstacles.csv")
 
 metadata_df = metadata_df[metadata_df.imageURL.isin(dropbbox_list_files_df.item_name.values)]
 
