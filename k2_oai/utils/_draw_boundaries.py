@@ -1,0 +1,77 @@
+from __future__ import annotations
+
+import cv2 as cv
+import numpy as np
+
+from ._linalg import compute_matrix
+from ._parsers import parse_str_as_coordinates
+
+
+def draw_boundaries(
+    input_image: np.ndarray,
+    roof_coordinates: str,
+    obstacle_coordinates: str,
+) -> np.ndarray:
+    """Draws roof and obstacle labels on the input image from their coordinates.
+
+    Parameters
+    ----------
+    input_image : np.ndarray
+        Input image.
+    roof_coordinates : str or list of strings
+        Roof coordinates.
+    obstacle_coordinates : str
+        Obstacle coordinates.
+
+    Returns
+    -------
+    np.ndarray
+        Image with labels drawn.
+    """
+    points: np.array = parse_str_as_coordinates(roof_coordinates).reshape((-1, 1, 2))
+    result: np.ndarray = cv.polylines(input_image, [points], True, (0, 0, 255), 2)
+
+    for obst in obstacle_coordinates:
+        points: np.array = parse_str_as_coordinates(obst).reshape((-1, 1, 2))
+        result: np.array = cv.polylines(result, [points], True, (255, 0, 0), 2)
+
+    return result
+
+
+def rotate_and_crop_roof(input_image: np.ndarray, roof_coordinates: str) -> np.ndarray:
+    """Rotates the input image to make the roof sides parallel to the image,
+    then crops it.
+
+    Parameters
+    ----------
+    input_image : np.ndarray
+        The input image.
+    roof_coordinates : str
+        Roof coordinates.
+
+    Returns
+    -------
+    np.ndarray
+        The rotated and cropped roof.
+    """
+
+    coord = parse_str_as_coordinates(roof_coordinates, dtype="int32", sort_coords=True)
+
+    M = compute_matrix(coord)
+
+    im_affine = cv.warpAffine(
+        input_image, M, input_image.shape[0:2], cv.INTER_LINEAR, cv.BORDER_CONSTANT
+    )
+
+    diff = np.subtract(coord[1], coord[0])
+
+    if diff[1] > 0:
+        dist_y = np.linalg.norm(coord[1] - coord[0]).astype(int)
+        dist_x = np.linalg.norm(coord[2] - coord[0]).astype(int)
+    else:
+        dist_y = np.linalg.norm(coord[2] - coord[0]).astype(int)
+        dist_x = np.linalg.norm(coord[1] - coord[0]).astype(int)
+
+    return im_affine[
+        coord[0][1] : coord[0][1] + dist_y, coord[0][0] : coord[0][0] + dist_x
+    ]
