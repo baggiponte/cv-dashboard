@@ -78,7 +78,7 @@ with st.expander("Click to see the metadata table for available photos"):
     st.dataframe(metadata_df)
 
 try:
-    roof_id = int(st.selectbox("Select roof_id: ", options=sorted(metadata_df.sample(100).roof_id.unique())))
+    roof_id = int(st.selectbox("Select roof_id: ", options=sorted(metadata_df.roof_id.unique())))
 except:
     st.error("Please insert a valid roof_id")
 
