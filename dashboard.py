@@ -15,7 +15,6 @@ from k2_oai.metrics import surface_absolute_error
 
 from k2_oai.utils.dropbox_io_utils import *
 
-
 st.set_page_config(
     page_title="K2 <-> OAI",
     #page_icon=Image.open(os.path.join(currentdir, "static", "img", "koi_logo.png")),
@@ -33,7 +32,7 @@ def streamlit_dropbox_connect():
 
 @st.cache
 def read_photos_list_from_dropbox(dbx):
-    return get_dropbox_list_files_df(dbx, "/k2/raw_photos/small_photos-tagged_obstacles")["item_abs_path"]
+    return get_dropbox_list_files_df(dbx, "/k2/raw_photos/small_photos-api_upload")["item_abs_path"]
 
 
 @st.cache
@@ -48,7 +47,7 @@ def read_metadata_df_from_dropbox():
 def load_photo_from_dropbox(photo_name):
     dbx.files_download_to_file(
        photo_name,
-       "/k2/raw_photos/small_photos-tagged_obstacles/{}".format(photo_name)
+       "/k2/raw_photos/small_photos-api_upload/{}".format(photo_name)
     )
     im_bgr: np.ndarray = cv.imread(photo_name, 1)
     im_gs: np.ndarray = cv.imread(photo_name, 0)
@@ -62,7 +61,9 @@ def plot_channel_histogram(im_in):
 
 dbx = streamlit_dropbox_connect()
 
-dropbbox_list_files_df = get_dropbox_list_files_df(dbx, "/k2/raw_photos/small_photos-tagged_obstacles")
+dropbbox_list_files_df = get_dropbox_list_files_df(
+    dbx, "/k2/raw_photos/small_photos-api_upload"
+)
 
 with st.expander("Click to see the list of photos paths on remote folder"):
     st.dataframe(dropbbox_list_files_df)
@@ -83,6 +84,14 @@ try:
 except:
     st.error("Please insert a valid roof_id")
 
+st.write("Roof obstacles metadata as recorded in DB:")
+
+metadata_photo_obstacles = metadata_df.loc[
+    metadata_df.roof_id == roof_id,
+]
+
+st.dataframe(metadata_photo_obstacles)
+
 pixel_coord_roof = metadata_df.loc[
     metadata_df.roof_id == roof_id,
     "pixelCoordinates_roof"
@@ -102,7 +111,6 @@ test_photo_name = metadata_df.loc[lambda df: df["roof_id"] == roof_id, "imageURL
 try:
 
     im_bgr, im_gs = load_photo_from_dropbox(test_photo_name)
-
     os.remove(test_photo_name)
 
     im_k2labeled = draw_boundaries(

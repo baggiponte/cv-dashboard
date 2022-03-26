@@ -85,3 +85,7 @@ def get_dropbox_list_files_df(dbx, path):
     else:
         print('Error getting list of files from Dropbox: ' + str(e))
 
+
+def upload_file_to_path(dbx, file_path_from, file_path_to):
+    with open(file_path_from, 'rb') as f:
+        dbx.files_upload(f.read(), file_path_to)
