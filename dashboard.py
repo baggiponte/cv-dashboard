@@ -1,5 +1,6 @@
 import ast
 import os
+import time
 
 import cv2 as cv
 import pandas as pd
@@ -31,21 +32,20 @@ def streamlit_dropbox_connect():
 
 
 @st.cache
-def read_photos_list_from_dropbox(dbx):
-    return get_dropbox_list_files_df(dbx, "/k2/raw_photos/small_photos-api_upload")["item_abs_path"]
-
-
-@st.cache
-def read_metadata_df_from_dropbox():
-    dbx.files_download_to_file(
+def get_dropbox_data_structures():
+    _dbx = dropbox_connect()
+    _st_dropbox_list_files_df = get_dropbox_list_files_df(_dbx, "/k2/raw_photos/small_photos-api_upload")
+    _dbx.files_download_to_file(
         "inner_join-roofs_images_obstacles.csv",
         "/k2/metadata/raw_data/inner_join-roofs_images_obstacles.csv"
     )
-    return pd.read_csv("inner_join-roofs_images_obstacles.csv")
+    _metadata_df = pd.read_csv("inner_join-roofs_images_obstacles.csv")
+    return _st_dropbox_list_files_df, _metadata_df
 
 
 def load_photo_from_dropbox(photo_name):
-    dbx.files_download_to_file(
+    _dbx = dropbox_connect()
+    _dbx.files_download_to_file(
        photo_name,
        "/k2/raw_photos/small_photos-api_upload/{}".format(photo_name)
     )
@@ -59,26 +59,21 @@ def plot_channel_histogram(im_in):
     return cv.calcHist(im_in, [0], None, [256], [0, 256])
 
 
-dbx = streamlit_dropbox_connect()
+dropbbox_list_files_df, metadata_df = get_dropbox_data_structures()
 
-dropbbox_list_files_df = get_dropbox_list_files_df(
-    dbx, "/k2/raw_photos/small_photos-api_upload"
-)
-
-with st.expander("Click to see the list of photos paths on remote folder"):
-    st.dataframe(dropbbox_list_files_df)
-
-photos_list = read_photos_list_from_dropbox(dbx)
-
-metadata_df = read_metadata_df_from_dropbox()
+photos_list = dropbbox_list_files_df.item_abs_path.values
 if os.path.exists("inner_join-roofs_images_obstacles.csv"):
     os.remove("inner_join-roofs_images_obstacles.csv")
 
-metadata_df = metadata_df[metadata_df.imageURL.isin(dropbbox_list_files_df.item_name.values)]
+st.write(dropbbox_list_files_df.shape)
+with st.expander("Click to see the list of photos paths on remote folder"):
+    st.dataframe(dropbbox_list_files_df)
 
+metadata_df = metadata_df[metadata_df.imageURL.isin(dropbbox_list_files_df.item_name.values)]
 with st.expander("Click to see the metadata table for available photos"):
     st.dataframe(metadata_df)
 
+roof_id = None
 try:
     roof_id = int(st.selectbox("Select roof_id: ", options=sorted(metadata_df.roof_id.unique())))
 except:

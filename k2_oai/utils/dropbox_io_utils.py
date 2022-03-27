@@ -38,10 +38,13 @@ def dropbox_connect(email=EMAIL):
         )
         print(dbx.users_get_current_account())
 
+        return dbx
+
     except AuthError as e:
+
         print('Error connecting to Dropbox with access token: ' + str(e))
 
-    return dbx
+        return None
 
 
 def get_dropbox_list_files_df(dbx, path):
@@ -51,33 +54,39 @@ def get_dropbox_list_files_df(dbx, path):
     """
 
     if True:
-        files = dbx.files_list_folder(path).entries
-        #print(files)
+
         files_list = []
-        for file in files:
-            #print(file.path_display)
-            if isinstance(file, dropbox.files.FolderMetadata):
-                metadata = {
-                    'item_type': "folder",
-                    'item_dropbox_id': file.id,
-                    'item_name': file.name,
-                    'item_abs_path': file.path_display,
-                    #'client_modified': file.client_modified,
-                    #'server_modified': file.server_modified
-                }
-                #print(getattr(metadata, "id"))
-                files_list.append(metadata)
-            elif isinstance(file, dropbox.files.FileMetadata):
-                metadata = {
-                    'item_type': "file",
-                    'item_dropbox_id': file.id,
-                    'item_name': file.name,
-                    'item_abs_path': file.path_display,
-                    #'client_modified': file.client_modified,
-                    #'server_modified': file.server_modified
-                }
-                #print(getattr(metadata, "id"))
-                files_list.append(metadata)
+
+        list_folder_results = dbx.files_list_folder(path)
+
+        while list_folder_results.has_more:
+            files = list_folder_results.entries
+            #print(files)
+            for file in files:
+                #print(file.path_display)
+                if isinstance(file, dropbox.files.FolderMetadata):
+                    metadata = {
+                        'item_type': "folder",
+                        'item_dropbox_id': file.id,
+                        'item_name': file.name,
+                        'item_abs_path': file.path_display,
+                        #'client_modified': file.client_modified,
+                        #'server_modified': file.server_modified
+                    }
+                    #print(getattr(metadata, "id"))
+                    files_list.append(metadata)
+                elif isinstance(file, dropbox.files.FileMetadata):
+                    metadata = {
+                        'item_type': "file",
+                        'item_dropbox_id': file.id,
+                        'item_name': file.name,
+                        'item_abs_path': file.path_display,
+                        #'client_modified': file.client_modified,
+                        #'server_modified': file.server_modified
+                    }
+                    #print(getattr(metadata, "id"))
+                    files_list.append(metadata)
+            list_folder_results = dbx.files_list_folder_continue(list_folder_results.cursor)
 
         df = pd.DataFrame.from_records(files_list)
         return df
