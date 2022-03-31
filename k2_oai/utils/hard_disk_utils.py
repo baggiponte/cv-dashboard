@@ -18,5 +18,5 @@ def upload_hard_disk_data(dbx):
             )
 
 
-dbx = dropbox_connect()
-upload_hard_disk_data(dbx)
+#dbx = dropbox_connect()
+#upload_hard_disk_data(dbx)

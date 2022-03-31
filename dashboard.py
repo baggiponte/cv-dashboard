@@ -18,11 +18,10 @@ from k2_oai.utils.dropbox_io_utils import *
 
 st.set_page_config(
     page_title="K2 <-> OAI",
-    #page_icon=Image.open(os.path.join(currentdir, "static", "img", "koi_logo.png")),
     layout='wide',
     initial_sidebar_state='auto'
 )
-#components.html("<h1 style='text-align: center'> Obstacle detection dashboard </div>")
+
 st.title("Obstacle detection dashboard")
 
 
@@ -55,7 +54,6 @@ def load_photo_from_dropbox(photo_name):
 
 
 def plot_channel_histogram(im_in):
-    # da aggiungere caso per immagine multi channel
     return cv.calcHist(im_in, [0], None, [256], [0, 256])
 
 
@@ -176,7 +174,3 @@ try:
 except:
 
     st.error("Photo corresponding to roof_id={} not found in this Dropbox folder!".format(roof_id))
-
-#st_cols[1].image(im_draw, use_column_width=True)
-#st_cols[2].image(im_result, use_column_width=True)
-#st_cols[5].write(f"Surface relative error: \n {im_rel_area_error:.2f}")
