@@ -33,15 +33,16 @@ def streamlit_dropbox_connect():
 @st.cache
 def get_dropbox_data_structures():
     _dbx = dropbox_connect()
-    _st_dropbox_list_files_df = get_dropbox_list_files_df(_dbx, "/k2/raw_photos/small_photos-api_upload")
+    st_dropbox_list_files_df = get_dropbox_list_files_df(_dbx, "/k2/raw_photos/small_photos-api_upload")
     _dbx.files_download_to_file(
         "inner_join-roofs_images_obstacles.csv",
         "/k2/metadata/raw_data/inner_join-roofs_images_obstacles.csv"
     )
-    _metadata_df = pd.read_csv("inner_join-roofs_images_obstacles.csv")
-    return _st_dropbox_list_files_df, _metadata_df
+    metadata_df = pd.read_csv("inner_join-roofs_images_obstacles.csv")
+    return st_dropbox_list_files_df, metadata_df
 
 
+@st.cache
 def load_photo_from_dropbox(photo_name):
     _dbx = dropbox_connect()
     _dbx.files_download_to_file(
