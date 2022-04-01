@@ -22,13 +22,13 @@ def dropbox_connect(email=EMAIL):
         dbx_team = dropbox.dropbox_client.DropboxTeam(
             DROPBOX_ACCESS_TOKEN
         )
-        print(dbx_team.team_get_info())
+        #print(dbx_team.team_get_info())
 
         team_member_info = dbx_team.team_members_get_info(
             [dropbox.team.UserSelectorArg("email", email)]
         )[0].get_member_info()
-        print(team_member_info.profile)
-        print(team_member_info.profile.team_member_id)
+        #print(team_member_info.profile)
+        #print(team_member_info.profile.team_member_id)
 
         team_member_id = team_member_info.profile.team_member_id
         dbx = dropbox.dropbox_client.DropboxTeam(
@@ -36,7 +36,7 @@ def dropbox_connect(email=EMAIL):
         ).with_path_root(dropbox.common.PathRoot.namespace_id(DROPBOX_NAMESPACE_ID)).as_user(
             team_member_id=team_member_id
         )
-        print(dbx.users_get_current_account())
+        #print(dbx.users_get_current_account())
 
         return dbx
 
