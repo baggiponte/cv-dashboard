@@ -49,6 +49,19 @@ def apply_binarization(
             input_image, 255, cv.ADAPTIVE_THRESH_GAUSSIAN_C, cv.THRESH_BINARY, kernel, C
         )
 
+    elif method == 'c':
+        histSize = 64
+        tol = 20
+        hist_gs = cv.calcHist([input_image],[0],None,[histSize],[0,256], accumulate=False)
+
+        n_max = np.argmax(np.array(hist_gs))
+        n_max = n_max*256/histSize
+
+        retval, im_tresh_light = cv.threshold(input_image, n_max+tol, 255, cv.THRESH_BINARY)
+        retval, im_tresh_dark = cv.threshold(input_image, n_max-tol, 255, cv.THRESH_BINARY_INV)
+        im_bin = cv.bitwise_or(im_tresh_light, im_tresh_dark)
+
+
     else:
         print('Insert a valid method: "s" for simple, "a" for adaptive ')
         return

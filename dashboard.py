@@ -115,7 +115,7 @@ try:
 
     im_filtered = apply_filter(
         im_gs_cropped,
-        301,
+        11,
         "b"
     )
 
