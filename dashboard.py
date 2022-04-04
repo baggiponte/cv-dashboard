@@ -174,4 +174,4 @@ try:
 
 except:
 
-    st.error("Photo corresponding to roof_id={} not found in this Dropbox folder!".format(roof_id))
+    st.error("Photo corresponding to roof_id={} not found in the remote folder!".format(roof_id))
