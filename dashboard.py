@@ -42,7 +42,7 @@ def get_dropbox_data_structures():
     return st_dropbox_list_files_df, metadata_df
 
 
-@st.cache
+@st.cache(allow_output_mutation=True)
 def load_photo_from_dropbox(photo_name):
     _dbx = dropbox_connect()
     _dbx.files_download_to_file(
