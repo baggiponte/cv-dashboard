@@ -25,11 +25,6 @@ st.set_page_config(
 st.title("Obstacle detection dashboard")
 
 
-@st.cache(allow_output_mutation=True)
-def streamlit_dropbox_connect():
-    return dropbox_connect()
-
-
 @st.cache
 def get_dropbox_data_structures():
     _dbx = dropbox_connect()
