@@ -17,6 +17,25 @@ APP_KEY = os.environ.get("APP_KEY")
 APP_SECRET = os.environ.get("APP_SECRET")
 
 
+def dropbox_connect_oauth2_cmd():
+
+    oauth_flow_dbx_obj = dropbox.DropboxOAuth2FlowNoRedirect(APP_KEY, APP_SECRET)
+
+    authorize_url = oauth_flow_dbx_obj.start()
+
+    print('1. Go to: ' + authorize_url)
+    print('2. Click "Allow" (you might have to log in first)')
+    print('3. Copy the authorization code.')
+    auth_code = input("4. Enter the authorization code here: ")
+
+    try:
+        oauth_flow_dbx_obj = oauth_flow_dbx_obj.finish(auth_code)
+        return _placeholders_list, oauth_flow_dbx_obj.access_token
+    except:
+        st.error("Invalid authorization code!")
+        return _placeholders_list, None
+
+
 def dropbox_connect_oauth2_streamlit():
 
     oauth_flow_dbx_obj = dropbox.DropboxOAuth2FlowNoRedirect(APP_KEY, APP_SECRET)
