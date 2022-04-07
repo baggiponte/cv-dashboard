@@ -30,15 +30,17 @@ def dropbox_connect_oauth2_cmd():
 
     try:
         oauth_flow_dbx_obj = oauth_flow_dbx_obj.finish(auth_code)
-        return _placeholders_list, oauth_flow_dbx_obj.access_token
+        return oauth_flow_dbx_obj
     except:
         st.error("Invalid authorization code!")
-        return _placeholders_list, None
+        return None
 
 
 def dropbox_connect_oauth2_streamlit():
 
-    oauth_flow_dbx_obj = dropbox.DropboxOAuth2FlowNoRedirect(APP_KEY, APP_SECRET)
+    oauth_flow_dbx_obj = dropbox.DropboxOAuth2FlowNoRedirect(
+        APP_KEY, APP_SECRET, token_access_type='offline',
+    )
 
     authorize_url = oauth_flow_dbx_obj.start()
 
@@ -57,19 +59,23 @@ def dropbox_connect_oauth2_streamlit():
 
     try:
         oauth_flow_dbx_obj = oauth_flow_dbx_obj.finish(auth_code)
-        return _placeholders_list, oauth_flow_dbx_obj.access_token
+        print(oauth_flow_dbx_obj.expires_at)
+        return _placeholders_list, oauth_flow_dbx_obj
     except:
         st.error("Invalid authorization code!")
         return _placeholders_list, None
 
 
-def dropbox_connect(dbx_access_token):
+def dropbox_connect(dbx_access_token, dbx_refresh_token):
 
     """Create a connection to Dropbox."""
 
     try:
 
-        dbx_team = dropbox.dropbox_client.DropboxTeam(dbx_access_token)
+        dbx_team = dropbox.dropbox_client.DropboxTeam(
+            oauth2_access_token=dbx_access_token, oauth2_refresh_token=dbx_refresh_token,
+            app_key=APP_KEY, app_secret=APP_SECRET
+        )
         #print(dbx_team.team_get_info())
 
         team_member_info = dbx_team.team_members_get_info(
@@ -80,7 +86,8 @@ def dropbox_connect(dbx_access_token):
 
         team_member_id = team_member_info.profile.team_member_id
         dbx = dropbox.dropbox_client.DropboxTeam(
-            dbx_access_token
+            oauth2_access_token=dbx_access_token, oauth2_refresh_token=dbx_refresh_token,
+            app_key=APP_KEY, app_secret=APP_SECRET
         ).with_path_root(dropbox.common.PathRoot.namespace_id(DROPBOX_NAMESPACE_ID)).as_user(
             team_member_id=team_member_id
         )
