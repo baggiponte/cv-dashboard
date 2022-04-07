@@ -21,10 +21,26 @@ def apply_filter(input_image: np.ndarray, sigma: int, method: str = "b"):
     numpy.ndarray
         The filtered image.
     """
-
     is_positive_odd_integer(sigma)
 
-    if method == "b":
-        return cv.bilateralFilter(input_image, 9, sigma, sigma)
-    elif method == "g":
+    if method == 'b':
+
+        if len(input_image.shape) > 2:
+            if input_image.shape[2] > 3:#bgra image
+                im_use = cv.cvtColor(input_image, cv.COLOR_BGRA2BGR)
+                im_result = input_image
+                im_result[:, :, 0:3] = cv.bilateralFilter(im_use, 9, sigma, sigma)
+            else:#bgr image
+                im_result = cv.bilateralFilter(input_image, 9, sigma, sigma)
+                im_result = cv.cvtColor(im_result, cv.COLOR_BGR2BGRA)
+        else:#grayscale image
+            im_result = cv.bilateralFilter(input_image, 9, sigma, sigma)
+            im_result = cv.cvtColor(im_result, cv.COLOR_GRAY2BGRA)
+
+        return im_result
+
+    elif method == 'g':
         return cv.GaussianBlur(input_image, (0, 0), sigma)
+
+    else:
+        print("Insert 'b' for bilater filter og 'g' for Gaussian blur")

@@ -56,13 +56,18 @@ def rotate_and_crop_roof(input_image: np.ndarray, roof_coordinates: str) -> np.n
     """
 
     coord = parse_str_as_coordinates(roof_coordinates, dtype="int32", sort_coords=True)
+    
+    if len(input_image.shape) < 3:
+        im_alpha = cv.cvtColor(input_image, cv.COLOR_GRAY2BGRA)
+    else:
+        im_alpha = cv.cvtColor(input_image, cv.COLOR_BGR2BGRA)
 
     #rectangular roofs
     if len(coord) == 4:
         M = compute_matrix(coord)
 
         im_affine = cv.warpAffine(
-            input_image, M, input_image.shape[0:2], cv.INTER_LINEAR, cv.BORDER_CONSTANT
+            im_alpha, M, im_alpha.shape[0:2], cv.INTER_LINEAR, cv.BORDER_CONSTANT
         )
 
         diff = np.subtract(coord[1], coord[0])
@@ -74,7 +79,7 @@ def rotate_and_crop_roof(input_image: np.ndarray, roof_coordinates: str) -> np.n
             dist_y = np.linalg.norm(coord[2] - coord[0]).astype(int)
             dist_x = np.linalg.norm(coord[1] - coord[0]).astype(int)
 
-        im_result = im_affine[coord[0][1] : coord[0][1] + dist_y, coord[0][0] : coord[0][0] + dist_x]
+        im_result = im_affine[coord[0][1] : coord[0][1] + dist_y, coord[0][0] : coord[0][0] + dist_x, :]
 
     #polygonal roofs
     else:
@@ -85,16 +90,11 @@ def rotate_and_crop_roof(input_image: np.ndarray, roof_coordinates: str) -> np.n
 
         cv.fillConvexPoly(mask, pts, (255, 255, 255))
 
-        if len(input_image.shape) < 3:
-            im_alpha = cv.cvtColor(input_image, cv.COLOR_GRAY2BGRA)
-        else:
-            im_alpha = cv.cvtColor(input_image, cv.COLOR_BGR2BGRA)
-
         im_alpha[:, :, 3] = mask
 
         bot_right = np.max(pts, axis=0)
         top_left = np.min(pts, axis=0)
 
-        im_result = im_alpha[top_left[0][1] : bot_right[0][1], top_left[0][0] : bot_right[0][0]]
+        im_result = im_alpha[top_left[0][1] : bot_right[0][1], top_left[0][0] : bot_right[0][0], :]
 
     return im_result

@@ -30,9 +30,9 @@ def apply_binarization(
     numpy.ndarray
         The thresholded image.
     """
-
+    im_masked = cv.bitwise_and(input_image[:, :, 0], input_image[:, :, 3])
     if method == "s":
-        retval, im_bin = cv.threshold(input_image, 0, 255, cv.THRESH_OTSU)
+        retval, im_bin = cv.threshold(im_masked, 0, 255, cv.THRESH_OTSU)
 
     elif method == "a":
         if blocksize > 0:
@@ -42,17 +42,18 @@ def apply_binarization(
             else:
                 kernel = blocksize
         else:
-            kernel = int(input_image.size / 1000) + 1
+            kernel = int(im_masked.size / 1000) + 1
             if kernel % 2 == 0:
                 kernel = kernel + 1
         im_bin = cv.adaptiveThreshold(
-            input_image, 255, cv.ADAPTIVE_THRESH_GAUSSIAN_C, cv.THRESH_BINARY, kernel, C
+            im_masked, 255, cv.ADAPTIVE_THRESH_GAUSSIAN_C, cv.THRESH_BINARY, kernel, C
         )
 
     elif method == 'c':
-        histSize = 64
-        tol = 20
+        histSize = 256
         hist_gs = cv.calcHist([input_image],[0],None,[histSize],[0,256], accumulate=False)
+        hist_gs[0] = hist_gs[0] - np.sum(input_image[:, :, 3] == 0)
+        tol = int(np.std(hist_gs)/40)
 
         n_max = np.argmax(np.array(hist_gs))
         n_max = n_max*256/histSize
@@ -60,13 +61,14 @@ def apply_binarization(
         retval, im_tresh_light = cv.threshold(input_image, n_max+tol, 255, cv.THRESH_BINARY)
         retval, im_tresh_dark = cv.threshold(input_image, n_max-tol, 255, cv.THRESH_BINARY_INV)
         im_bin = cv.bitwise_or(im_tresh_light, im_tresh_dark)
-
+        im_bin = cv.bitwise_and(im_bin, input_image[:, :, 3])
 
     else:
         print('Insert a valid method: "s" for simple, "a" for adaptive ')
         return
 
-    if np.sum(im_bin == 255) > np.sum(im_bin == 0):
+    if np.sum(im_bin == 255) > np.sum(im_bin == 0) - np.sum(input_image[:, :, 3] == 0):
         im_bin = cv.bitwise_not(im_bin)
+        im_bin = cv.bitwise_and(im_bin, input_image[:, :, 3])
 
     return im_bin

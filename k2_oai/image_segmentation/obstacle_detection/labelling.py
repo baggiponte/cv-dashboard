@@ -59,7 +59,7 @@ def image_segmentation(
         im_open, connectivity=8
     )
 
-    draw_image = cv.cvtColor(labelled_image, cv.COLOR_GRAY2BGR)
+    draw_image = cv.cvtColor(labelled_image, cv.COLOR_BGRA2BGR)
 
     rect_coord = []
     for i in range(1, num_labels):
