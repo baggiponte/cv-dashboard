@@ -13,6 +13,34 @@ st.set_page_config(
     initial_sidebar_state='auto'
 )
 
+
+@st.cache(allow_output_mutation=True)
+def get_dbx_connection():
+    return dropbox_connect(st.session_state['access_token'], st.session_state['refresh_token'])
+
+
+@st.cache
+def get_remote_data_structures(_dbx):
+    st_dropbox_list_files_df = get_dropbox_list_files_df(_dbx, "/k2/raw_photos/small_photos-api_upload")
+    _dbx.files_download_to_file(
+        "inner_join-roofs_images_obstacles.csv",
+        "/k2/metadata/raw_data/inner_join-roofs_images_obstacles.csv"
+    )
+    metadata_df = pd.read_csv("inner_join-roofs_images_obstacles.csv")
+    return st_dropbox_list_files_df, metadata_df
+
+
+@st.cache(allow_output_mutation=True)
+def load_photo_from_remote(_dbx, photo_name):
+    _dbx.files_download_to_file(
+        photo_name,
+        "/k2/raw_photos/small_photos-api_upload/{}".format(photo_name)
+    )
+    im_bgr: np.ndarray = cv.imread(photo_name, 1)
+    im_gs: np.ndarray = cv.imread(photo_name, 0)
+    return im_bgr, im_gs
+
+
 st.title("Obstacle detection dashboard")
 
 if 'access_token' not in st.session_state:
@@ -26,37 +54,16 @@ if st.session_state['access_token'] is None:
         st.session_state['refresh_token'] = oauth_result.refresh_token
 
 if st.session_state['access_token'] is not None:
+
+    dbx = get_dbx_connection()
+
     for placeholder in placeholders_list:
         placeholder.empty()
-
-    @st.cache
-    def get_remote_data_structures():
-        _dbx = dropbox_connect(st.session_state['access_token'], st.session_state['refresh_token'])
-        st_dropbox_list_files_df = get_dropbox_list_files_df(_dbx, "/k2/raw_photos/small_photos-api_upload")
-        _dbx.files_download_to_file(
-            "inner_join-roofs_images_obstacles.csv",
-            "/k2/metadata/raw_data/inner_join-roofs_images_obstacles.csv"
-        )
-        metadata_df = pd.read_csv("inner_join-roofs_images_obstacles.csv")
-        return st_dropbox_list_files_df, metadata_df
-
-
-    @st.cache(allow_output_mutation=True)
-    def load_photo_from_remote(photo_name):
-        _dbx = dropbox_connect(st.session_state['access_token'], st.session_state['refresh_token'])
-        _dbx.files_download_to_file(
-           photo_name,
-           "/k2/raw_photos/small_photos-api_upload/{}".format(photo_name)
-        )
-        im_bgr: np.ndarray = cv.imread(photo_name, 1)
-        im_gs: np.ndarray = cv.imread(photo_name, 0)
-        return im_bgr, im_gs
-
 
     def plot_channel_histogram(im_in):
         return cv.calcHist(im_in, [0], None, [256], [0, 256])
 
-    dropbbox_list_files_df, metadata_df = get_remote_data_structures()
+    dropbbox_list_files_df, metadata_df = get_remote_data_structures(dbx)
 
     photos_list = dropbbox_list_files_df.item_abs_path.values
     if os.path.exists("inner_join-roofs_images_obstacles.csv"):
@@ -102,7 +109,7 @@ if st.session_state['access_token'] is not None:
 
     try:
 
-        im_bgr, im_gs = load_photo_from_remote(test_photo_name)
+        im_bgr, im_gs = load_photo_from_remote(dbx, test_photo_name)
         if os.path.exists(test_photo_name):
             os.remove(test_photo_name)
 
