@@ -42,6 +42,7 @@ def dropbox_connect_oauth2_streamlit():
         APP_KEY, APP_SECRET, token_access_type='offline',
     )
 
+    auth_code = None
     authorize_url = oauth_flow_dbx_obj.start()
 
     _placeholders_list = list()
@@ -62,7 +63,8 @@ def dropbox_connect_oauth2_streamlit():
         print(oauth_flow_dbx_obj.expires_at)
         return _placeholders_list, oauth_flow_dbx_obj
     except:
-        st.error("Invalid authorization code!")
+        if auth_code is not None and len(auth_code):
+            st.error("Invalid authorization code!")
         return _placeholders_list, None
 
 
