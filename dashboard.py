@@ -122,25 +122,22 @@ if st.session_state['access_token'] is not None:
 
         im_filtered = apply_filter(
             im_gs_cropped,
-            301,
-            "b"
+            3,
+            "g"
         )
 
         im_thresholded = apply_binarization(im_filtered, "s")
 
         if im_gs_cropped.size > 10000:
             opening = 3
-            edges = 12
         else:
             opening = 1
-            edges = 15
 
         im_segmented, im_bbox, rect_coord = image_segmentation(
             im_thresholded,
             im_gs_cropped,
             opening,
-            min_area=int(np.max(im_thresholded.shape)/10),
-            cut_border=edges
+            min_area=int(np.max(im_thresholded.shape)/10)
         )
 
         im_draw, im_result, im_error, im_rel_area_error = surface_absolute_error(
@@ -151,7 +148,7 @@ if st.session_state['access_token'] is not None:
         )
 
         st_cols = st.columns((1, 1))
-        st_cols[0].image(im_k2labeled, use_column_width=True, channels="BGR", caption="Original image with DB labels")
+        st_cols[0].image(im_k2labeled, use_column_width=True, channels="BGRA", caption="Original image with DB labels")
         fig, ax = plt.subplots(figsize=(3, 1))
         n, bins, patches = ax.hist(im_bgr_cropped[:, :, 0].flatten(), bins=50, edgecolor='blue', alpha=0.5)
         n, bins, patches = ax.hist(im_bgr_cropped[:, :, 1].flatten(), bins=50, edgecolor='green', alpha=0.5)
@@ -168,7 +165,7 @@ if st.session_state['access_token'] is not None:
 
         st_cols = st.columns((1, 1, 1))
 
-        st_cols[0].image(im_bgr_cropped, use_column_width=True, channels="BGR", caption="Cropped Roof RGB with DB labels")
+        st_cols[0].image(im_bgr_cropped, use_column_width=True, channels="BGRA", caption="Cropped Roof RGB with DB labels")
         st_cols[1].image(im_gs_cropped, use_column_width=True, caption="Cropped Roof GS")
         st_cols[2].image(im_filtered, use_column_width=True, caption="Cropped Roof GS filtered")
 

@@ -43,4 +43,4 @@ def apply_filter(input_image: np.ndarray, sigma: int, method: str = "b"):
         return cv.GaussianBlur(input_image, (0, 0), sigma)
 
     else:
-        print("Insert 'b' for bilater filter og 'g' for Gaussian blur")
+        print("Insert 'b' for bilater filter or 'g' for Gaussian blur")

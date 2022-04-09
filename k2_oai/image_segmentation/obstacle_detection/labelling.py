@@ -73,7 +73,8 @@ def image_segmentation(
             w = stats[i, cv.CC_STAT_WIDTH]
             botright_p = (topleft_p[0] + w, topleft_p[1] + h)
 
-            rect_coord.append((topleft_p, botright_p))
-            draw_image = cv.rectangle(draw_image, topleft_p, botright_p, (255, 0, 0), 1)
+            if h < input_image.shape[0]*0.8 and w < input_image.shape[1]*0.8:
+                rect_coord.append((topleft_p, botright_p))
+                draw_image = cv.rectangle(draw_image, topleft_p, botright_p, (255, 0, 0), 1)
 
     return im_labeled, draw_image, rect_coord

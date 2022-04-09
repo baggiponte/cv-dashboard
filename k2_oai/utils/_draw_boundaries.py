@@ -83,6 +83,7 @@ def rotate_and_crop_roof(input_image: np.ndarray, roof_coordinates: str) -> np.n
 
     #polygonal roofs
     else:
+        coord = parse_str_as_coordinates(roof_coordinates, dtype="int32", sort_coords=False)
         mask = np.zeros(input_image.shape[0:2], dtype="uint8")
 
         pts = np.array(coord, np.int32)  
