@@ -18,6 +18,7 @@
 
 k2_oai/image_segmentation/data
 inner_join-roofs_images_obstacles.csv
+temp_notebook.ipynb
 
 # +--------------+
 # | PRIVATE DIRS |
