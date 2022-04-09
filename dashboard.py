@@ -115,8 +115,8 @@ try:
 
     im_filtered = apply_filter(
         im_gs_cropped,
-        11,
-        "b"
+        3,
+        "g"
     )
 
     im_thresholded = apply_binarization(im_filtered, "s")

@@ -55,8 +55,9 @@ def image_segmentation(
 
     kernel = np.ones((kernel_opening, kernel_opening), np.uint8)
     im_open = cv.morphologyEx(im_cut_border, cv.MORPH_OPEN, kernel)
+    im_close = cv.morphologyEx(im_open, cv.MORPH_CLOSE, kernel)
     num_labels, im_labeled, stats, centroids = cv.connectedComponentsWithStats(
-        im_open, connectivity=8
+        im_close, connectivity=8
     )
 
     draw_image = cv.cvtColor(labelled_image, cv.COLOR_BGRA2BGR)

@@ -2,6 +2,32 @@ import cv2 as cv
 import numpy as np
 
 
+def otsu_algorithm(im_in, zeros):
+  hist = cv.calcHist([im_in],[0],None,[256],[0,256])
+  hist[0] = hist[0] - zeros #correction for images with masks
+  hist_norm = hist.ravel()/hist.sum()
+  Q = hist_norm.cumsum()
+  bins = np.arange(256)
+  fn_min = np.inf
+  thresh = -1
+  for i in range(1,256):
+      p1,p2 = np.hsplit(hist_norm,[i]) # probabilities
+      q1,q2 = Q[i],Q[255]-Q[i] # cum sum of classes
+      if q1 < 1.e-6 or q2 < 1.e-6:
+          continue
+      b1,b2 = np.hsplit(bins,[i]) # weights
+      # finding means and variances
+      m1,m2 = np.sum(p1*b1)/q1, np.sum(p2*b2)/q2
+      v1,v2 = np.sum(((b1-m1)**2)*p1)/q1,np.sum(((b2-m2)**2)*p2)/q2
+      # calculates the minimization function
+      fn = v1*q1 + v2*q2
+      if fn < fn_min:
+          fn_min = fn
+          thresh = i
+
+  return thresh, fn_min
+
+
 def apply_binarization(
     input_image: np.ndarray, method: str = "s", C=0, blocksize=-1
 ) -> np.ndarray:
@@ -31,8 +57,11 @@ def apply_binarization(
         The thresholded image.
     """
     im_masked = cv.bitwise_and(input_image[:, :, 0], input_image[:, :, 3])
+    n_zeros_mask = np.sum(input_image[:, :, 3] == 0)
+
     if method == "s":
-        retval, im_bin = cv.threshold(im_masked, 0, 255, cv.THRESH_OTSU)
+        otsu_thresh, min_class_var = otsu_algorithm(im_masked, n_zeros_mask)
+        retval, im_bin = cv.threshold(im_masked, otsu_thresh, 255, cv.THRESH_BINARY)
 
     elif method == "a":
         if blocksize > 0:
@@ -50,10 +79,13 @@ def apply_binarization(
         )
 
     elif method == 'c':
+        otsu_thresh, min_class_var = otsu_algorithm(im_masked, n_zeros_mask)
+
         histSize = 256
         hist_gs = cv.calcHist([input_image],[0],None,[histSize],[0,256], accumulate=False)
-        hist_gs[0] = hist_gs[0] - np.sum(input_image[:, :, 3] == 0)
-        tol = int(np.std(hist_gs)/40)
+        hist_gs[0] = hist_gs[0] - n_zeros_mask
+
+        tol = int(min_class_var/18)
 
         n_max = np.argmax(np.array(hist_gs))
         n_max = n_max*256/histSize
@@ -67,7 +99,7 @@ def apply_binarization(
         print('Insert a valid method: "s" for simple, "a" for adaptive ')
         return
 
-    if np.sum(im_bin == 255) > np.sum(im_bin == 0) - np.sum(input_image[:, :, 3] == 0):
+    if np.sum(im_bin == 255) > np.sum(im_bin == 0) - n_zeros_mask:
         im_bin = cv.bitwise_not(im_bin)
         im_bin = cv.bitwise_and(im_bin, input_image[:, :, 3])
 
