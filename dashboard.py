@@ -20,7 +20,8 @@ def get_dbx_connection():
 
 
 @st.cache
-def get_remote_data_structures(_dbx):
+def get_remote_data_structures():
+    _dbx = get_dbx_connection()
     st_dropbox_list_files_df = get_dropbox_list_files_df(_dbx, "/k2/raw_photos/small_photos-api_upload")
     _dbx.files_download_to_file(
         "inner_join-roofs_images_obstacles.csv",
@@ -31,7 +32,8 @@ def get_remote_data_structures(_dbx):
 
 
 @st.cache(allow_output_mutation=True)
-def load_photo_from_remote(_dbx, photo_name):
+def load_photo_from_remote(photo_name):
+    _dbx = get_dbx_connection()
     _dbx.files_download_to_file(
         photo_name,
         "/k2/raw_photos/small_photos-api_upload/{}".format(photo_name)
@@ -55,15 +57,13 @@ if st.session_state['access_token'] is None:
 
 if st.session_state['access_token'] is not None:
 
-    dbx = get_dbx_connection()
-
     for placeholder in placeholders_list:
         placeholder.empty()
 
     def plot_channel_histogram(im_in):
         return cv.calcHist(im_in, [0], None, [256], [0, 256])
 
-    dropbbox_list_files_df, metadata_df = get_remote_data_structures(dbx)
+    dropbbox_list_files_df, metadata_df = get_remote_data_structures()
 
     photos_list = dropbbox_list_files_df.item_abs_path.values
     if os.path.exists("inner_join-roofs_images_obstacles.csv"):
@@ -85,9 +85,7 @@ if st.session_state['access_token'] is not None:
 
     st.write("Roof obstacles metadata as recorded in DB:")
 
-    metadata_photo_obstacles = metadata_df.loc[
-        metadata_df.roof_id == roof_id,
-    ]
+    metadata_photo_obstacles = metadata_df.loc[metadata_df.roof_id == roof_id]
 
     st.dataframe(metadata_photo_obstacles)
 
@@ -109,7 +107,7 @@ if st.session_state['access_token'] is not None:
 
     try:
 
-        im_bgr, im_gs = load_photo_from_remote(dbx, test_photo_name)
+        im_bgr, im_gs = load_photo_from_remote(test_photo_name)
         if os.path.exists(test_photo_name):
             os.remove(test_photo_name)
 
