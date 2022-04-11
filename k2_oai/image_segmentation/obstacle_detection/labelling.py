@@ -4,6 +4,40 @@ import cv2 as cv
 import numpy as np
 
 
+def bounding_boxes(draw_image, stats, min_area, margin_w, margin_h):
+    rect_coord = []
+    for i in range(1, stats.shape[1]):
+        if stats[i, cv.CC_STAT_AREA] > min_area:
+            topleft_p = (
+                stats[i, cv.CC_STAT_LEFT] + margin_w,
+                stats[i, cv.CC_STAT_TOP] + margin_h,
+            )
+            h = stats[i, cv.CC_STAT_HEIGHT]
+            w = stats[i, cv.CC_STAT_WIDTH]
+            botright_p = (topleft_p[0] + w, topleft_p[1] + h)
+
+            if h < draw_image.shape[0]*0.8 and w < draw_image.shape[1]*0.8:
+                rect_coord.append((topleft_p, botright_p))
+                draw_image = cv.rectangle(draw_image, topleft_p, botright_p, (255, 0, 0), 1)
+    
+    return rect_coord, draw_image
+
+
+def oriented_bboxes(im_labeled, draw_image, stats, min_area, margin_w, margin_h):
+    rect_coord = []
+    print(stats.shape)
+    for i in range(1, stats.shape[0]):
+        if stats[i, cv.CC_STAT_AREA] > min_area:
+            obst_im = (im_labeled == i)*255
+            contours, hierarchy = cv.findContours(obst_im.astype(np.uint8), cv.RETR_TREE, cv.CHAIN_APPROX_SIMPLE)
+            approxCurve = cv.approxPolyDP(contours[0], 5.0, True)
+            cv.polylines(draw_image, [approxCurve], True, (255, 0, 0), 2)
+            rect_coord.append(approxCurve)
+
+    return rect_coord, draw_image
+    
+    
+
 def image_segmentation(
     input_image: np.ndarray,
     labelled_image: np.ndarray,
@@ -62,19 +96,7 @@ def image_segmentation(
 
     draw_image = cv.cvtColor(labelled_image, cv.COLOR_BGRA2BGR)
 
-    rect_coord = []
-    for i in range(1, num_labels):
-        if stats[i, cv.CC_STAT_AREA] > min_area:
-            topleft_p = (
-                stats[i, cv.CC_STAT_LEFT] + margin_w,
-                stats[i, cv.CC_STAT_TOP] + margin_h,
-            )
-            h = stats[i, cv.CC_STAT_HEIGHT]
-            w = stats[i, cv.CC_STAT_WIDTH]
-            botright_p = (topleft_p[0] + w, topleft_p[1] + h)
+    #bbox_coord, bbox_image = bounding_boxes(draw_image, stats, min_area, margin_w, margin_h)
+    bbox_coord, bbox_image = oriented_bboxes(im_labeled, draw_image, stats, min_area, margin_w, margin_h)
 
-            if h < input_image.shape[0]*0.8 and w < input_image.shape[1]*0.8:
-                rect_coord.append((topleft_p, botright_p))
-                draw_image = cv.rectangle(draw_image, topleft_p, botright_p, (255, 0, 0), 1)
-
-    return im_labeled, draw_image, rect_coord
+    return im_labeled, bbox_image, bbox_coord

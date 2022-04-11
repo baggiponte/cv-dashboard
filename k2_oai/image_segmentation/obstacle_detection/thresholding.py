@@ -85,7 +85,10 @@ def apply_binarization(
         hist_gs = cv.calcHist([input_image],[0],None,[histSize],[0,256], accumulate=False)
         hist_gs[0] = hist_gs[0] - n_zeros_mask
 
-        tol = int(min_class_var/18)
+        #tol = int(min_class_var/10)
+        tol = int(np.var(hist_gs)/15000)
+        print(tol)
+        #tol = 30
 
         n_max = np.argmax(np.array(hist_gs))
         n_max = n_max*256/histSize
@@ -93,7 +96,7 @@ def apply_binarization(
         retval, im_tresh_light = cv.threshold(input_image, n_max+tol, 255, cv.THRESH_BINARY)
         retval, im_tresh_dark = cv.threshold(input_image, n_max-tol, 255, cv.THRESH_BINARY_INV)
         im_bin = cv.bitwise_or(im_tresh_light, im_tresh_dark)
-        im_bin = cv.bitwise_and(im_bin, input_image[:, :, 3])
+        im_bin = cv.bitwise_and(im_bin[:, :, 0], input_image[:, :, 3])
 
     else:
         print('Insert a valid method: "s" for simple, "a" for adaptive ')

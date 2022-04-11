@@ -35,18 +35,7 @@ def surface_absolute_error(
     # labeled by us image
     im_result = np.zeros(input_image.shape, np.uint8)
     for label in label_coord:
-        vertex_tl = label[0]
-        vertex_br = label[1]
-        pts = np.array(
-            [
-                label[0],
-                (vertex_tl[0], vertex_br[1]),
-                label[1],
-                (vertex_br[0], vertex_tl[1]),
-            ],
-            np.int32,
-        )
-        im_result = cv.fillConvexPoly(im_result, pts, (255, 255, 255), 1)
+        im_result = cv.fillConvexPoly(im_result, label, (255, 255, 255), 1)
 
     im_error = cv.bitwise_xor(im_result, im_draw)
 
