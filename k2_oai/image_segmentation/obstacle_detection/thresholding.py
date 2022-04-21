@@ -29,7 +29,7 @@ def otsu_algorithm(im_in, zeros):
 
 
 def apply_binarization(
-    input_image: np.ndarray, method: str = "s", C=0, blocksize=-1
+    input_image: np.ndarray, method: str = "s", C=0, blocksize=-1, tol=10
 ) -> np.ndarray:
     """Applies a threshold on the grayscale input image. Depending on the method,
     applies simple thresholding (using the Otsu method to compute the threshold) or
@@ -43,7 +43,8 @@ def apply_binarization(
     method : str (default: "s")
         The thresholding method to use:
         - 's' stands for simple thresholding;
-        - 'a' stands for adaptive thresholding
+        - 'a' stands for adaptive thresholding;
+        - 'c' stands for composite thresholding;
     C : int (default: 0)
         (Only for adaptive thresholding) The constant subtracted from the mean,
         or weighted mean. Normally is positive, but can also be negative.
@@ -86,8 +87,9 @@ def apply_binarization(
         hist_gs[0] = hist_gs[0] - n_zeros_mask
 
         #tol = int(min_class_var/10)
-        tol = int(np.var(hist_gs)/15000)
-        print(tol)
+        if tol == "infer":
+            tol = int(np.var(hist_gs)/15000)
+        #print(tol)
         #tol = 30
 
         n_max = np.argmax(np.array(hist_gs))

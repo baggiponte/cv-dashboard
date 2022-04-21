@@ -102,54 +102,68 @@ def dropbox_connect(dbx_access_token, dbx_refresh_token):
         return None
 
 
+def parse_dropbox_list_folder_results(list_folder_results):
+
+    files_list = []
+
+    files = list_folder_results.entries
+
+    # print(files)
+    for file in files:
+        # print(file.path_display)
+        if isinstance(file, dropbox.files.FolderMetadata):
+            metadata = {
+                'item_type': "folder",
+                'item_dropbox_id': file.id,
+                'item_name': file.name,
+                'item_abs_path': file.path_display,
+                # 'client_modified': file.client_modified,
+                # 'server_modified': file.server_modified
+            }
+            # print(getattr(metadata, "id"))
+            files_list.append(metadata)
+        elif isinstance(file, dropbox.files.FileMetadata):
+            metadata = {
+                'item_type': "file",
+                'item_dropbox_id': file.id,
+                'item_name': file.name,
+                'item_abs_path': file.path_display,
+                # 'client_modified': file.client_modified,
+                # 'server_modified': file.server_modified
+            }
+            # print(getattr(metadata, "id"))
+            files_list.append(metadata)
+
+    return files_list
+
+
 def get_dropbox_list_files_df(dbx, path):
 
     """
     Return a Pandas dataframe of files in a given Dropbox folder path in the Apps directory.
     """
 
-    if True:
+    files_list = []
 
-        files_list = []
+    list_folder_results = dbx.files_list_folder(path)
+    files = list_folder_results.entries
 
-        list_folder_results = dbx.files_list_folder(path)
+    while list_folder_results.has_more or len(files):
+        files = list_folder_results.entries
+        files_list += parse_dropbox_list_folder_results(list_folder_results)
+        list_folder_results = dbx.files_list_folder_continue(list_folder_results.cursor)
 
-        while list_folder_results.has_more:
-            files = list_folder_results.entries
-            #print(files)
-            for file in files:
-                #print(file.path_display)
-                if isinstance(file, dropbox.files.FolderMetadata):
-                    metadata = {
-                        'item_type': "folder",
-                        'item_dropbox_id': file.id,
-                        'item_name': file.name,
-                        'item_abs_path': file.path_display,
-                        #'client_modified': file.client_modified,
-                        #'server_modified': file.server_modified
-                    }
-                    #print(getattr(metadata, "id"))
-                    files_list.append(metadata)
-                elif isinstance(file, dropbox.files.FileMetadata):
-                    metadata = {
-                        'item_type': "file",
-                        'item_dropbox_id': file.id,
-                        'item_name': file.name,
-                        'item_abs_path': file.path_display,
-                        #'client_modified': file.client_modified,
-                        #'server_modified': file.server_modified
-                    }
-                    #print(getattr(metadata, "id"))
-                    files_list.append(metadata)
-            list_folder_results = dbx.files_list_folder_continue(list_folder_results.cursor)
-
-        df = pd.DataFrame.from_records(files_list)
-        return df
-
-    else:
-        print('Error getting list of files from Dropbox: ' + str(e))
+    df = pd.DataFrame.from_records(files_list)
+    return df
 
 
-def upload_file_to_path(dbx, file_path_from, file_path_to):
+def upload_file_to_dropbox_path(dbx, file_path_from, file_path_to):
     with open(file_path_from, 'rb') as f:
         dbx.files_upload(f.read(), file_path_to)
+
+
+def download_from_dropbox_path(dbx, file_path_from, file_path_to):
+    dbx.files_download_to_file(
+        file_path_from,
+        file_path_to
+    )
