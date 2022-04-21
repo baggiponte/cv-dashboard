@@ -5,13 +5,7 @@ from k2_oai.image_segmentation import *
 from k2_oai.utils.st_utils import *
 
 
-def obstacle_detection_page(placeholders_list):
-
-    for placeholder in placeholders_list:
-        placeholder.empty()
-
-    def plot_channel_histogram(im_in):
-        return cv.calcHist(im_in, [0], None, [256], [0, 256])
+def obstacle_detection_page():
 
     chosen_folder = None
     try:

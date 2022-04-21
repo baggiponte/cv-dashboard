@@ -15,6 +15,8 @@ DROPBOX_NAMESPACE_ID = os.environ.get("DROPBOX_NAMESPACE_ID")
 EMAIL = os.environ.get("DROPBOX_USER_MAIL")
 APP_KEY = os.environ.get("APP_KEY")
 APP_SECRET = os.environ.get("APP_SECRET")
+if "DROPBOX_ACCESS_TOKEN" in os.environ:
+    DROPBOX_ACCESS_TOKEN = os.environ.get("DROPBOX_ACCESS_TOKEN")
 
 
 def dropbox_connect_oauth2_cmd():
@@ -66,6 +68,37 @@ def dropbox_connect_oauth2_streamlit():
         return _placeholders_list, None
 
 
+def dropbox_connect_only_access_token(dropbox_access_token):
+
+    try:
+        dbx_team = dropbox.dropbox_client.DropboxTeam(
+            dropbox_access_token
+        )
+        #print(dbx_team.team_get_info())
+
+        team_member_info = dbx_team.team_members_get_info(
+            [dropbox.team.UserSelectorArg("email", EMAIL)]
+        )[0].get_member_info()
+        #print(team_member_info.profile)
+        #print(team_member_info.profile.team_member_id)
+
+        team_member_id = team_member_info.profile.team_member_id
+        dbx = dropbox.dropbox_client.DropboxTeam(
+            DROPBOX_ACCESS_TOKEN
+        ).with_path_root(dropbox.common.PathRoot.namespace_id(DROPBOX_NAMESPACE_ID)).as_user(
+            team_member_id=team_member_id
+        )
+        #print(dbx.users_get_current_account())
+
+        return dbx
+
+    except AuthError as e:
+
+        print('Error connecting to Dropbox with access token: ' + str(e))
+
+        return None
+
+
 def dropbox_connect(dbx_access_token, dbx_refresh_token):
 
     """Create a connection to Dropbox."""
@@ -73,7 +106,8 @@ def dropbox_connect(dbx_access_token, dbx_refresh_token):
     try:
 
         dbx_team = dropbox.dropbox_client.DropboxTeam(
-            oauth2_access_token=dbx_access_token, oauth2_refresh_token=dbx_refresh_token,
+            oauth2_access_token=dbx_access_token,
+            oauth2_refresh_token=dbx_refresh_token,
             app_key=APP_KEY, app_secret=APP_SECRET
         )
         #print(dbx_team.team_get_info())
@@ -86,7 +120,8 @@ def dropbox_connect(dbx_access_token, dbx_refresh_token):
 
         team_member_id = team_member_info.profile.team_member_id
         dbx = dropbox.dropbox_client.DropboxTeam(
-            oauth2_access_token=dbx_access_token, oauth2_refresh_token=dbx_refresh_token,
+            oauth2_access_token=dbx_access_token,
+            oauth2_refresh_token=dbx_refresh_token,
             app_key=APP_KEY, app_secret=APP_SECRET
         ).with_path_root(dropbox.common.PathRoot.namespace_id(DROPBOX_NAMESPACE_ID)).as_user(
             team_member_id=team_member_id

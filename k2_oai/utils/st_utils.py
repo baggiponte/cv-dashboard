@@ -5,7 +5,10 @@ from k2_oai.utils.dropbox_io_utils import *
 
 @st.cache(allow_output_mutation=True)
 def get_dbx_connection():
-    return dropbox_connect(st.session_state['access_token'], st.session_state['refresh_token'])
+    if "DROPBOX_ACCESS_TOKEN" in os.environ:
+        return dropbox_connect_only_access_token(st.session_state['access_token'])
+    else:
+        return dropbox_connect(st.session_state['access_token'], st.session_state['refresh_token'])
 
 
 @st.cache
