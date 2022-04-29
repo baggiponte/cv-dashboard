@@ -1,6 +1,5 @@
 streamlit
 opencv-python-headless
 matplotlib
-pillow
 dropbox
 python-dotenv

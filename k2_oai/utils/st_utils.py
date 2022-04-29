@@ -1,51 +1,71 @@
-from k2_oai.utils._draw_boundaries import *
+from __future__ import annotations
 
-from k2_oai.utils.dropbox_io_utils import *
+import os
+
+import cv2 as cv
+import numpy as np
+import pandas as pd
+import streamlit as st
+
+from k2_oai.io import dropbox as dropbox_io
 
 
 @st.cache(allow_output_mutation=True)
-def get_dbx_connection():
+def get_dropbox_connection():
     if "DROPBOX_ACCESS_TOKEN" in os.environ:
-        return dropbox_connect_only_access_token(st.session_state['access_token'])
+        return dropbox_io.dropbox_connect_access_token_only(
+            st.session_state["access_token"]
+        )
     else:
-        return dropbox_connect(st.session_state['access_token'], st.session_state['refresh_token'])
+        return dropbox_io.dropbox_connect(
+            st.session_state["access_token"], st.session_state["refresh_token"]
+        )
 
 
 @st.cache
-def get_metadata_df():
-    _dbx = get_dbx_connection()
-    _dbx.files_download_to_file(
-        "inner_join-roofs_images_obstacles.csv",
-        "/k2/metadata/raw_data/inner_join-roofs_images_obstacles.csv"
+def get_photos_metadata(file_format: str | None = None, dropbox_app=None):
+
+    if file_format.strip(".") not in ["parquet", "csv"]:
+        raise ValueError("file_format must be either 'parquet' or 'csv'")
+    file_format = "parquet" if file_format is None else file_format.strip(".")
+
+    dbx_app = get_dropbox_connection() if dropbox_app is None else dropbox_app
+
+    if file_format == "parquet":
+        dbx_app.files_download_to_file(
+            "join-roofs_images_obstacles.parquet",
+            "/k2/metadata/transformed_data/join-roofs_images_obstacles.parquet",
+        )
+        return pd.read_parquet("join-roofs_images_obstacles.parquet")
+
+    dbx_app.files_download_to_file(
+        "join-roofs_images_obstacles.csv",
+        "/k2/metadata/transformed_data/join-roofs_images_obstacles.csv",
     )
-    metadata_df = pd.read_csv("inner_join-roofs_images_obstacles.csv")
-    return metadata_df
+    return pd.read_csv("join-roofs_images_obstacles.csv")
 
 
 @st.cache
-def get_photos_list(folder_name):
-    _dbx = get_dbx_connection()
-    st_dropbox_list_files_df = get_dropbox_list_files_df(_dbx, "/k2/raw_photos/{}".format(folder_name))
-    return st_dropbox_list_files_df
+def get_photos_list(folder_name, dropbox_app=None):
+    dbx_app = get_dropbox_connection() if dropbox_app is None else dropbox_app
+    return dropbox_io.list_content_of(dbx_app, f"/k2/raw_photos/{folder_name}")
 
 
 @st.cache
-def get_remote_data_structures(folder_name):
-    _dbx = get_dbx_connection()
-    st_dropbox_list_files_df = get_dropbox_list_files_df(_dbx, "/k2/raw_photos/{}".format(folder_name))
-    _dbx.files_download_to_file(
-        "inner_join-roofs_images_obstacles.csv",
-        "/k2/metadata/raw_data/inner_join-roofs_images_obstacles.csv"
-    )
-    metadata_df = pd.read_csv("inner_join-roofs_images_obstacles.csv")
-    return st_dropbox_list_files_df, metadata_df
+def get_photos_and_metadata_from_dbx(folder_name):
+
+    dbx_app = get_dropbox_connection()
+    photos_list = get_photos_list(folder_name=folder_name, dropbox_app=dbx_app)
+    photos_metadata = get_photos_metadata(dropbox_app=dbx_app)
+
+    return photos_list, photos_metadata
 
 
 @st.cache(allow_output_mutation=True)
-def load_photo_from_remote(folder_name, photo_name):
-    _dbx = get_dbx_connection()
-    _dbx.files_download_to_file(
-        photo_name, "/k2/raw_photos/{}/{}".format(folder_name, photo_name)
+def load_photo_from_dbx(folder_name, photo_name):
+    dbx_app = get_dropbox_connection()
+    dbx_app.files_download_to_file(
+        photo_name, f"/k2/raw_photos/{folder_name}/{photo_name}"
     )
     im_bgr: np.ndarray = cv.imread(photo_name, 1)
     im_gs: np.ndarray = cv.imread(photo_name, 0)
