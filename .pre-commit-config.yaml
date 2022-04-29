@@ -1,0 +1,65 @@
+# See https://pre-commit.com for more information
+# See https://pre-commit.com/hooks.html for more hooks
+
+# Fix project python version
+default_language_version:
+    python: python3.9
+
+repos:
+
+# general pre-commit hooks
+-   repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v4.2.0
+    hooks:
+    -   id: trailing-whitespace
+    -   id: end-of-file-fixer
+    -   id: check-yaml
+    -   id: check-toml
+    -   id: check-json
+    -   id: check-added-large-files
+        args: ["--maxkb=5120"]  # max 5MB
+
+# black - code formatter
+-   repo: https://github.com/psf/black
+    rev: 22.3.0
+    hooks:
+    -   id: black
+        name: black
+
+# isort - sort imports
+-   repo: https://github.com/pycqa/isort
+    rev: 5.10.1
+    hooks:
+    -   id: isort
+        name: isort
+        args: ["--profile=black", "--filter-files"]
+
+# flake8 - python linter
+# arguments are in `setup.cfg`!
+-   repo: https://github.com/pycqa/flake8
+    rev: 4.0.1
+    hooks:
+      - id: flake8
+
+# pyupgrade - upgrade syntax to version 3.9
+-   repo: https://github.com/asottile/pyupgrade
+    rev: v2.32.0
+    hooks:
+    -   id: pyupgrade
+        args: ["--py39-plus"]
+
+# nbqa - all the above but for notebooks
+-   repo: https://github.com/nbQA-dev/nbQA
+    rev: 1.3.1
+    hooks:
+    -   id: nbqa-black
+        additional_dependencies: [black==22.3.0]
+    -   id: nbqa-isort
+        additional_dependencies: [isort==5.10.1]
+        args: ["--profile=black", "--filter-files"]
+    -   id: nbqa-flake8
+        additional_dependencies: [flake8==4.0.1]
+        args: ["--extend-ignore=E203,E402"]
+    -   id: nbqa-pyupgrade
+        additional_dependencies: [pyupgrade==2.31.1]
+        args: ["--py39-plus"]
