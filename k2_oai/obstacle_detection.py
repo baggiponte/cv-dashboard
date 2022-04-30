@@ -23,8 +23,6 @@ from numpy.core.multiarray import ndarray
 
 from k2_oai.utils import is_positive_odd_integer, is_valid_method, pad_image
 
-BoundingBox = tuple[tuple[int, int], tuple[int, int]]
-
 __all__: list[str] = [
     "BoundingBox",
     "filtering_step",
@@ -32,6 +30,8 @@ __all__: list[str] = [
     "morphological_opening_step",
     "image_segmentation",
 ]
+
+BoundingBox = tuple[tuple[int, int], tuple[int, int]]
 
 
 def filtering_step(input_image: ndarray, sigma: int, method: str = "b") -> ndarray:
@@ -43,7 +43,7 @@ def filtering_step(input_image: ndarray, sigma: int, method: str = "b") -> ndarr
         The image that the filter will be applied to. Is a greyscale image.
     sigma : int
         The sigma value of the filter. It must be a positive, odd integer.
-    method : str
+    method : str (default: "b")
         The method used to apply the filter. It must be either 'bilateral' (or 'b')
         or 'gaussian' (or 'g').
 
@@ -53,8 +53,8 @@ def filtering_step(input_image: ndarray, sigma: int, method: str = "b") -> ndarr
         The filtered image, with 4 channels (BGRA).
     """
 
-    def _bilateral_filter(image, sigma):
-        return cv.bilateralFilter(image, sigma, sigma)
+    def _bilateral_filter(image, _sigma):
+        return cv.bilateralFilter(src=image, d=9, sigmaColor=_sigma, sigmaSpace=_sigma)
 
     is_positive_odd_integer(sigma)
     is_valid_method(method, ["b", "g", "bilateral", "gaussian"])
@@ -77,8 +77,8 @@ def filtering_step(input_image: ndarray, sigma: int, method: str = "b") -> ndarr
         return cv.GaussianBlur(input_image, (0, 0), sigma)
 
 
-def _compute_otsu_thresholding(im_in, zeros):
-    hist = cv.calcHist([im_in], [0], None, [256], [0, 256])
+def _compute_otsu_thresholding(input_image, zeros):
+    hist = cv.calcHist([input_image], [0], None, [256], [0, 256])
     hist[0] = hist[0] - zeros  # correction for images with masks
     hist_norm = hist.ravel() / hist.sum()
     Q = hist_norm.cumsum()
@@ -106,9 +106,9 @@ def _compute_otsu_thresholding(im_in, zeros):
 def binarization_step(
     input_image: ndarray,
     method: str = "s",
-    constant: int = 0,
-    kernel_size: int | None = None,
-    tolerance: int | None = None,
+    adaptive_kernel_size: int | None = None,
+    adaptive_constant: int = 0,
+    composite_tolerance: int | None = None,
 ) -> ndarray:
     """Applies a threshold on the grayscale input image. Depending on the method,
     applies simple thresholding (using the Otsu method to compute the threshold) or
@@ -117,20 +117,21 @@ def binarization_step(
 
     Parameters
     ----------
-    input_image : numpy.ndarray
+    input_image : ndarray
         The input image to which thresholding will be applied.
     method : str (default: "s")
         The thresholding method to use:
         - 's' or 'simple' stands for simple thresholding;
         - 'a' or 'adaptive' stands for adaptive thresholding;
         - 'c' or 'composite' stands for composite thresholding;
-    constant : int (default: 0)
+    adaptive_kernel_size : int (default: None)
+        Only used in adaptive thresholding. The size of the kernel for binarization.
+        Must be a positive, odd number. If None, then defaults to 0,001 times the size
+        of the image.
+    adaptive_constant : int (default: 0)
         (Only for adaptive thresholding) The constant subtracted from the mean,
         or weighted mean. Normally is positive, but can also be negative.
-    kernel_size : int (default: -1)
-        (Only for adaptive thresholding) Size of a pixel neighborhood, used
-        to compute a threshold value for the pixel. Must be a positive, odd number.
-    tolerance : int (default)
+    composite_tolerance : int (default)
         (Only for composite thresholding) A threshold in the range [0, 255].
 
     Return
@@ -150,13 +151,13 @@ def binarization_step(
             masked_image, otsu_threshold, 255, cv.THRESH_BINARY
         )
     elif method == "a" or method == "adaptive":
-        if kernel_size is None:
+        if adaptive_kernel_size is None:
             threshold_kernel: int = int(input_image.size / 1000)
             if threshold_kernel % 2 == 0:
                 threshold_kernel += 1
         else:
-            is_positive_odd_integer(kernel_size)
-            threshold_kernel: int = kernel_size
+            is_positive_odd_integer(adaptive_kernel_size)
+            threshold_kernel: int = adaptive_kernel_size
 
         binarized_image = cv.adaptiveThreshold(
             masked_image,
@@ -164,7 +165,7 @@ def binarization_step(
             cv.ADAPTIVE_THRESH_GAUSSIAN_C,
             cv.THRESH_BINARY,
             threshold_kernel,
-            constant,
+            adaptive_constant,
         )
     else:  # method == 'c', i.e. composite
         histogram_length: int = 256
@@ -175,17 +176,27 @@ def binarization_step(
         )
         greyscale_histogram[0] = greyscale_histogram[0] - n_zeros_mask
 
-        if tolerance is None:
-            tolerance = int(np.var(greyscale_histogram) / 15000)
+        if composite_tolerance not in range(0, 256):
+            raise ValueError("Composite tolerance must be in the range [0, 255].")
+        elif composite_tolerance is None:
+            composite_tolerance = int(np.var(greyscale_histogram) / 15000)
+            if composite_tolerance > 255:
+                composite_tolerance = 255
 
         max_frequency = np.argmax(np.array(greyscale_histogram))
         scaled_max_frequency = max_frequency * 256 / histogram_length
 
         _, im_tresh_light = cv.threshold(
-            input_image, scaled_max_frequency + tolerance, 255, cv.THRESH_BINARY
+            input_image,
+            scaled_max_frequency + composite_tolerance,
+            255,
+            cv.THRESH_BINARY,
         )
         _, im_tresh_dark = cv.threshold(
-            input_image, scaled_max_frequency - tolerance, 255, cv.THRESH_BINARY_INV
+            input_image,
+            scaled_max_frequency - composite_tolerance,
+            255,
+            cv.THRESH_BINARY_INV,
         )
         binarized_image = cv.bitwise_or(im_tresh_light, im_tresh_dark)
         binarized_image = cv.bitwise_and(binarized_image[:, :, 0], input_image[:, :, 3])
@@ -198,7 +209,7 @@ def binarization_step(
 
 
 def morphological_opening_step(
-    image: ndarray, kernel_opening: int | None = None
+    image: ndarray, kernel_size: int | None = None
 ) -> ndarray:
     """Applies an opening[1] (i.e., erosion followed by dilation) on the input image,
     to remove noise.
@@ -207,7 +218,7 @@ def morphological_opening_step(
     ----------
     image : ndarray
         The input image to which the opening will be applied.
-    kernel_opening : int or None (default: None)
+    kernel_size : int or None (default: None)
         Size of the kernel used for the morphological opening.
         Must be a positive, odd number. If None, defaults to 3 if image size is greater
         than 10_000, otherwise to 1.
@@ -222,12 +233,12 @@ def morphological_opening_step(
     .. [1]
         https://docs.opencv.org/4.x/d9/d61/tutorial_py_morphological_ops.html
     """
-    if kernel_opening is None:
-        kernel_opening: int = 1 if image.size < 10_000 else 3
+    if kernel_size is None:
+        kernel_size: int = 1 if image.size < 10_000 else 3
     else:
-        is_positive_odd_integer(kernel_opening)
+        is_positive_odd_integer(kernel_size)
 
-    kernel: ndarray = np.ones((kernel_opening, kernel_opening), np.uint8)
+    kernel: ndarray = np.ones((kernel_size, kernel_size), np.uint8)
     image_open_morphology = cv.morphologyEx(image, cv.MORPH_OPEN, kernel)
     return cv.morphologyEx(image_open_morphology, cv.MORPH_CLOSE, kernel)
 
@@ -275,10 +286,10 @@ def _get_bounding_polygon(blobs, background, stats, min_area):
 
 def image_segmentation(
     filtered_image: ndarray,
-    labelled_image: ndarray,
+    source_image: ndarray,
+    box_or_polygon: str = "box",
     min_area: int | None = 0,
     padding_percentage: int = 0,
-    bbox_or_polygon: str = "bbox",
 ):
     """Finds the connected components in a binary image and assigns a label to them.
     First, crops the border of the image (depending on the cut_border parameter), then
@@ -289,16 +300,16 @@ def image_segmentation(
     ----------
     filtered_image : ndarray
         Input image.
-    labelled_image : ndarray
+    source_image : ndarray
         The image where obstacles have been labelled.
-    min_area : int (default=0)
+    box_or_polygon : str (default='bbox')
+        String indicating whether to using bounding boxes or bounding polygon.
+    min_area : int (default: 0)
         Minimum area of the connected components to be kept. Defaults to zero.
         If set to None, it will default to the largest component of the image
         (height or width), divided by 10 and then rounded up.
     padding_percentage : int (default=0)
         Percentage of the image shape that has to be cut from the borders.
-    bbox_or_polygon : str (default='bbox')
-        String indicating whether to using bounding boxes or bounding polygon.
 
     Returns
     -------
@@ -322,19 +333,19 @@ def image_segmentation(
         padded_image, connectivity=8
     )
 
-    background_image = cv.cvtColor(labelled_image, cv.COLOR_BGRA2BGR)
+    background_image = cv.cvtColor(source_image, cv.COLOR_BGRA2BGR)
 
-    is_valid_method(bbox_or_polygon, ["bbox", "polygon"])
-    if bbox_or_polygon == "bbox":
-        bbox_coord, bbox_image = _get_bounding_boxes(
+    is_valid_method(box_or_polygon, ["box", "polygon"])
+    if box_or_polygon == "box":
+        bounding_boxes_coordinates, image_with_bounding_boxes = _get_bounding_boxes(
             background_image, stats, min_area, padding_margins
         )
     else:
-        bbox_coord, bbox_image = _get_bounding_polygon(
+        bounding_boxes_coordinates, image_with_bounding_boxes = _get_bounding_polygon(
             blobs_image,
             background_image,
             stats,
             min_area,
         )
 
-    return blobs_image, bbox_image, bbox_coord
+    return blobs_image, image_with_bounding_boxes, bounding_boxes_coordinates
