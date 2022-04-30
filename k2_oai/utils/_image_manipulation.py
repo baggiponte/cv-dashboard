@@ -42,40 +42,38 @@ def read_image_from_bytestring(
 
 def pad_image(
     image: ndarray,
-    padding_size: int,
-    return_padding_size: bool = False,
-) -> ndarray | tuple[ndarray, tuple[int, int]]:
+    padding_percentage: int | None = None,
+) -> tuple[ndarray, tuple[int, int]]:
     """Applies padding to an image (e.g. to remove borders).
 
     Parameters
     ----------
     image : ndarray
         The image to be padded.
-    padding_size : int
-        The size of the padding.
-    return_padding_size : bool (default: False)
-        If True, returns the padding size as a tuple.
+    padding_percentage : int or None (default: None)
+        The size of the padding, as integer between 1 and 100.
+        If None, no padding is applied.
 
     Returns
     -------
-    ndarray
-        The padded image.
+    ndarray, tuple[int, int]
+        The padded image and the margins for the padding.
     """
-    if padding_size < 0:
-        raise ValueError("Parameter `padding` must be a positive integer.")
-    elif padding_size > 0:
-        margin_h, margin_w = (int(image.shape[n] / padding_size) for n in range(2))
-    else:
+    if padding_percentage not in range(0, 101):
+        raise ValueError("Parameter `padding` must range between 1 and 100.")
+    elif padding_percentage is None or padding_percentage == 0:
         margin_h, margin_w = 0, 0
+    else:
+        margin_h, margin_w = (
+            int(image.shape[n] / padding_percentage) for n in range(2)
+        )
 
     padded_image: ndarray = image[
         margin_h : image.shape[0] - margin_h,
         margin_w : image.shape[1] - margin_w,
     ]
 
-    if return_padding_size:
-        return padded_image, (margin_h, margin_w)
-    return padded_image
+    return padded_image, (margin_h, margin_w)
 
 
 def draw_boundaries(

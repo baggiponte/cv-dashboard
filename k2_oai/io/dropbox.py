@@ -17,8 +17,7 @@ if "DROPBOX_ACCESS_TOKEN" in os.environ:
 
 
 def dropbox_oauth2_connect(
-    dbx_app_key=DROPBOX_APP_KEY,
-    dbx_app_secret=DROPBOX_APP_SECRET
+    dbx_app_key=DROPBOX_APP_KEY, dbx_app_secret=DROPBOX_APP_SECRET
 ):
 
     dropbox_oauth2_flow = dropbox.DropboxOAuth2FlowNoRedirect(
@@ -38,14 +37,13 @@ def dropbox_oauth2_connect(
 
     try:
         return dropbox_oauth2_flow.finish(auth_code)
-    except:
+    except:  # noqa: E722
         print("Invalid authorization code!")
         return None
 
 
 def st_dropbox_oauth2_connect(
-    dbx_app_key=DROPBOX_APP_KEY,
-    dbx_app_secret=DROPBOX_APP_SECRET
+    dbx_app_key=DROPBOX_APP_KEY, dbx_app_secret=DROPBOX_APP_SECRET
 ):
     dropbox_oauth_flow = dropbox.DropboxOAuth2FlowNoRedirect(
         dbx_app_key,
@@ -71,7 +69,7 @@ def st_dropbox_oauth2_connect(
     try:
         complete_oauth_flow = dropbox_oauth_flow.finish(auth_code)
         return st_text_boxes, complete_oauth_flow
-    except:
+    except:  # noqa: E722
         if auth_code is not None and len(auth_code):
             st.error("Invalid authorization code!")
         return st_text_boxes, None
@@ -167,8 +165,8 @@ def _parse_dropbox_folder_content(folder_content):
 
 
 def list_content_of(dbx_app, path):
-    """
-    Return a Pandas dataframe of files in a given Dropbox folder path in the Apps directory.
+    """Return a Pandas dataframe of files in a given Dropbox folder path in the Apps
+    directory.
     """
 
     files_list = []
@@ -179,7 +177,9 @@ def list_content_of(dbx_app, path):
     while dbx_folder_contents.has_more or len(files):
         files = dbx_folder_contents.entries
         files_list += _parse_dropbox_folder_content(dbx_folder_contents)
-        dbx_folder_contents = dbx_app.files_list_folder_continue(dbx_folder_contents.cursor)
+        dbx_folder_contents = dbx_app.files_list_folder_continue(
+            dbx_folder_contents.cursor
+        )
 
     return pd.DataFrame.from_records(files_list)
 
