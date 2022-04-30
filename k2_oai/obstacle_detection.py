@@ -10,7 +10,6 @@ The function takes in a greyscale image; then applies two steps:
 
 Finally, a connected component analysis is used to perform a blob analysis.
 
-Finally, a morphological transformation is applied to the image to detect the obstacles.
 As a reference, see the official Python tutorial from OpenCV:
 https://docs.opencv.org/4.x/d3/db4/tutorial_py_watershed.html
 """
@@ -28,7 +27,7 @@ __all__: list[str] = [
     "filtering_step",
     "binarization_step",
     "morphological_opening_step",
-    "image_segmentation",
+    "detect_obstacles",
 ]
 
 BoundingBox = tuple[tuple[int, int], tuple[int, int]]
@@ -108,7 +107,7 @@ def binarization_step(
     method: str = "s",
     adaptive_kernel_size: int | None = None,
     adaptive_constant: int = 0,
-    composite_tolerance: int | None = None,
+    composite_tolerance: int | None | str = None,
 ) -> ndarray:
     """Applies a threshold on the grayscale input image. Depending on the method,
     applies simple thresholding (using the Otsu method to compute the threshold) or
@@ -151,7 +150,7 @@ def binarization_step(
             masked_image, otsu_threshold, 255, cv.THRESH_BINARY
         )
     elif method == "a" or method == "adaptive":
-        if adaptive_kernel_size is None:
+        if adaptive_kernel_size is None or adaptive_kernel_size == "auto":
             threshold_kernel: int = int(input_image.size / 1000)
             if threshold_kernel % 2 == 0:
                 threshold_kernel += 1
@@ -244,7 +243,7 @@ def morphological_opening_step(
 
 
 def _get_bounding_boxes(input_image, stats, margins, min_area):
-    rect_coord = []
+    bounding_box_coordinates = []
 
     for i in range(0, stats.shape[0]):
 
@@ -259,16 +258,16 @@ def _get_bounding_boxes(input_image, stats, margins, min_area):
 
             # if height < draw_image.shape[0]*0.8 and width < draw_image.shape[1]*0.8:
 
-            rect_coord.append((top_left_px, bottom_right_px))
+            bounding_box_coordinates.append((top_left_px, bottom_right_px))
             input_image = cv.rectangle(
                 input_image, top_left_px, bottom_right_px, (255, 0, 0), 1
             )
 
-    return rect_coord, input_image
+    return bounding_box_coordinates, input_image
 
 
 def _get_bounding_polygon(blobs, background, stats, min_area):
-    rect_coord = []
+    polygon_coordinates = []
 
     for i in range(0, stats.shape[0]):
 
@@ -279,16 +278,16 @@ def _get_bounding_polygon(blobs, background, stats, min_area):
             )
             approximated_boundary = cv.approxPolyDP(contours[0], 5.0, True)
             cv.polylines(background, [approximated_boundary], True, (255, 0, 0), 2)
-            rect_coord.append(approximated_boundary)
+            polygon_coordinates.append(approximated_boundary)
 
-    return rect_coord, background
+    return polygon_coordinates, background
 
 
-def image_segmentation(
-    filtered_image: ndarray,
+def detect_obstacles(
+    blurred_roof: ndarray,
     source_image: ndarray,
     box_or_polygon: str = "box",
-    min_area: int | None = 0,
+    min_area: int | str = 0,
     padding_percentage: int = 0,
 ):
     """Finds the connected components in a binary image and assigns a label to them.
@@ -298,7 +297,7 @@ def image_segmentation(
 
     Parameters
     ----------
-    filtered_image : ndarray
+    blurred_roof : ndarray
         Input image.
     source_image : ndarray
         The image where obstacles have been labelled.
@@ -306,7 +305,7 @@ def image_segmentation(
         String indicating whether to using bounding boxes or bounding polygon.
     min_area : int (default: 0)
         Minimum area of the connected components to be kept. Defaults to zero.
-        If set to None, it will default to the largest component of the image
+        If set to "auto", it will default to the largest component of the image
         (height or width), divided by 10 and then rounded up.
     padding_percentage : int (default=0)
         Percentage of the image shape that has to be cut from the borders.
@@ -323,29 +322,32 @@ def image_segmentation(
 
     if min_area < 0:
         raise ValueError("`min_area` must be a positive integer.")
-    if min_area is None:
-        min_area: int = int(np.max(filtered_image.shape) / 10)
+    if min_area == "auto":
+        min_area: int = int(np.max(blurred_roof.shape) / 10)
 
     # padding
-    padded_image, padding_margins = pad_image(filtered_image, padding_percentage)
+    padded_image, padding_margins = pad_image(blurred_roof, padding_percentage)
 
-    total_labels, blobs_image, stats, blobs_centroids = cv.connectedComponentsWithStats(
-        padded_image, connectivity=8
-    )
+    (
+        total_labels,
+        obstacles_blobs,
+        stats,
+        blobs_centroids,
+    ) = cv.connectedComponentsWithStats(padded_image, connectivity=8)
 
     background_image = cv.cvtColor(source_image, cv.COLOR_BGRA2BGR)
 
     is_valid_method(box_or_polygon, ["box", "polygon"])
     if box_or_polygon == "box":
-        bounding_boxes_coordinates, image_with_bounding_boxes = _get_bounding_boxes(
+        bounding_boxes_coordinates, background_with_bboxes = _get_bounding_boxes(
             background_image, stats, min_area, padding_margins
         )
     else:
-        bounding_boxes_coordinates, image_with_bounding_boxes = _get_bounding_polygon(
-            blobs_image,
+        bounding_boxes_coordinates, background_with_bboxes = _get_bounding_polygon(
+            obstacles_blobs,
             background_image,
             stats,
             min_area,
         )
 
-    return blobs_image, image_with_bounding_boxes, bounding_boxes_coordinates
+    return obstacles_blobs, background_with_bboxes, bounding_boxes_coordinates

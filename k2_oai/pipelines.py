@@ -9,8 +9,8 @@ from numpy.core.multiarray import ndarray
 
 from k2_oai.obstacle_detection import (
     binarization_step,
+    detect_obstacles,
     filtering_step,
-    image_segmentation,
     morphological_opening_step,
 )
 from k2_oai.utils import rotate_and_crop_roof
@@ -97,7 +97,7 @@ def obstacle_detection_pipeline(
         adaptive_constant=binarization_constant,
         composite_tolerance=binarization_tolerance,
     )
-    morphed_roof: ndarray = morphological_opening_step(
+    blurred_roof: ndarray = morphological_opening_step(
         binarized_roof,
         kernel_size=morphology_kernel,
     )
@@ -108,8 +108,8 @@ def obstacle_detection_pipeline(
     else:
         padding: int = 0
 
-    return image_segmentation(
-        filtered_image=morphed_roof,
+    return detect_obstacles(
+        blurred_roof=blurred_roof,
         source_image=satellite_image,
         box_or_polygon=obstacle_boundary_type,
         min_area=obstacle_minimum_area,
