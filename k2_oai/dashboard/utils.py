@@ -21,11 +21,10 @@ def get_dropbox_connection():
 
 
 @st.cache
-def get_photos_metadata(file_format: str | None = None, dropbox_app=None):
+def get_photos_metadata(file_format: str = "parquet", dropbox_app=None):
 
-    if file_format.strip(".") not in ["parquet", "csv"]:
+    if file_format not in ["parquet", "csv"]:
         raise ValueError("file_format must be either 'parquet' or 'csv'")
-    file_format = "parquet" if file_format is None else file_format.strip(".")
 
     dbx_app = get_dropbox_connection() if dropbox_app is None else dropbox_app
 

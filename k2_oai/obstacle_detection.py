@@ -59,6 +59,7 @@ def filtering_step(input_image: ndarray, sigma: int, method: str = "b") -> ndarr
     is_valid_method(method, ["b", "g", "bilateral", "gaussian"])
 
     if method == "b" or method == "bilateral":
+
         if len(input_image.shape) > 2:
             if input_image.shape[2] > 3:  # bgra image
                 image_to_bgr = cv.cvtColor(input_image, cv.COLOR_BGRA2BGR)
@@ -247,21 +248,21 @@ def _get_bounding_boxes(input_image, stats, margins, min_area):
 
     for i in range(0, stats.shape[0]):
 
-        if stats[i, cv.CC_STAT_AREA] > min_area:
-            top_left_px = (
-                stats[i, cv.CC_STAT_LEFT] + margins[1],  # height
-                stats[i, cv.CC_STAT_TOP] + margins[0],  # width
-            )
-            height = stats[i, cv.CC_STAT_HEIGHT]
-            width = stats[i, cv.CC_STAT_WIDTH]
-            bottom_right_px = (top_left_px[0] + width, top_left_px[1] + height)
+        # if stats[i, cv.CC_STAT_AREA] > min_area:
+        top_left_px = (
+            stats[i, cv.CC_STAT_LEFT] + margins[1],  # height
+            stats[i, cv.CC_STAT_TOP] + margins[0],  # width
+        )
+        height = stats[i, cv.CC_STAT_HEIGHT]
+        width = stats[i, cv.CC_STAT_WIDTH]
+        bottom_right_px = (top_left_px[0] + width, top_left_px[1] + height)
 
-            # if height < draw_image.shape[0]*0.8 and width < draw_image.shape[1]*0.8:
+        # if height < draw_image.shape[0]*0.8 and width < draw_image.shape[1]*0.8:
 
-            bounding_box_coordinates.append((top_left_px, bottom_right_px))
-            input_image = cv.rectangle(
-                input_image, top_left_px, bottom_right_px, (255, 0, 0), 1
-            )
+        bounding_box_coordinates.append((top_left_px, bottom_right_px))
+        input_image = cv.rectangle(
+            input_image, top_left_px, bottom_right_px, (255, 0, 0), 1
+        )
 
     return bounding_box_coordinates, input_image
 
@@ -271,14 +272,14 @@ def _get_bounding_polygon(blobs, background, stats, min_area):
 
     for i in range(0, stats.shape[0]):
 
-        if stats[i, cv.CC_STAT_AREA] > min_area:
-            obst_im = (blobs == i) * 255
-            contours, hierarchy = cv.findContours(
-                obst_im.astype(np.uint8), cv.RETR_TREE, cv.CHAIN_APPROX_SIMPLE
-            )
-            approximated_boundary = cv.approxPolyDP(contours[0], 5.0, True)
-            cv.polylines(background, [approximated_boundary], True, (255, 0, 0), 2)
-            polygon_coordinates.append(approximated_boundary)
+        # if stats[i, cv.CC_STAT_AREA] > min_area:
+        obst_im = (blobs == i) * 255
+        contours, hierarchy = cv.findContours(
+            obst_im.astype(np.uint8), cv.RETR_TREE, cv.CHAIN_APPROX_SIMPLE
+        )
+        approximated_boundary = cv.approxPolyDP(contours[0], 5.0, True)
+        cv.polylines(background, [approximated_boundary], True, (255, 0, 0), 2)
+        polygon_coordinates.append(approximated_boundary)
 
     return polygon_coordinates, background
 
@@ -320,10 +321,10 @@ def detect_obstacles(
           bounding boxes of the obstacles that have been found.
     """
 
-    if min_area < 0:
-        raise ValueError("`min_area` must be a positive integer.")
     if min_area == "auto":
         min_area: int = int(np.max(blurred_roof.shape) / 10)
+    elif min_area < 0:
+        raise ValueError("`min_area` must be a positive integer.")
 
     # padding
     padded_image, padding_margins = pad_image(blurred_roof, padding_percentage)
@@ -340,7 +341,7 @@ def detect_obstacles(
     is_valid_method(box_or_polygon, ["box", "polygon"])
     if box_or_polygon == "box":
         bounding_boxes_coordinates, background_with_bboxes = _get_bounding_boxes(
-            background_image, stats, min_area, padding_margins
+            background_image, stats, padding_margins, min_area
         )
     else:
         bounding_boxes_coordinates, background_with_bboxes = _get_bounding_polygon(

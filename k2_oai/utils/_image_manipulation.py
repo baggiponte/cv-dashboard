@@ -98,28 +98,41 @@ def draw_boundaries(
         Image with labels drawn.
     """
 
-    if isinstance(roof_coordinates, str):
-        roof_coordinates: ndarray = parse_str_as_array(
-            roof_coordinates, sort_coordinates=True
-        )
-
-    obstacle_coordinate_pairs: ndarray = roof_coordinates.reshape((-1, 1, 2))
-    result: ndarray = cv.polylines(
-        input_image, [obstacle_coordinate_pairs], True, (0, 0, 255), 2
+    points: np.array = parse_str_as_array(roof_coordinates).reshape((-1, 1, 2))
+    result: np.ndarray = cv.polylines(
+        input_image, np.int32([points]), True, (0, 0, 255), 2
     )
 
-    if obstacle_coordinates:
-        if isinstance(obstacle_coordinates, str):
-            obstacle_coordinates: ndarray = parse_str_as_array(
-                obstacle_coordinates, sort_coordinates=True
-            )
-        for obstacle in obstacle_coordinates:
-            obstacle_coordinate_pairs: ndarray = obstacle.reshape((-1, 1, 2))
-            result: ndarray = cv.polylines(
-                result, [obstacle_coordinate_pairs], True, (255, 0, 0), 2
-            )
+    for obst in obstacle_coordinates:
+        points: np.array = parse_str_as_array(obst).reshape((-1, 1, 2))
+        result: np.array = cv.polylines(
+            result, np.int32([points]), True, (255, 0, 0), 2
+        )
 
     return result
+
+    # if isinstance(roof_coordinates, str):
+    #     roof_coordinates: ndarray = parse_str_as_array(
+    #         roof_coordinates, sort_coordinates=True
+    #     )
+    #
+    # obstacle_coordinate_pairs: ndarray = roof_coordinates.reshape((-1, 1, 2))
+    # result: ndarray = cv.polylines(
+    #     input_image, np.int32([obstacle_coordinate_pairs]), True, (0, 0, 255), 2
+    # )
+    #
+    # if obstacle_coordinates:
+    #     if isinstance(obstacle_coordinates, str):
+    #         obstacle_coordinates: ndarray = parse_str_as_array(
+    #             obstacle_coordinates, sort_coordinates=True
+    #         )
+    #     for obstacle in obstacle_coordinates:
+    #         obstacle_coordinate_pairs: ndarray = obstacle.reshape((-1, 1, 2))
+    #         result: ndarray = cv.polylines(
+    #             result, np.int32([obstacle_coordinate_pairs]), True, (255, 0, 0), 2
+    #         )
+    #
+    # return result
 
 
 def compute_rotation_matrix(coordinates_array):

@@ -106,11 +106,11 @@ def obstacle_detection_page():
     chosen_sigma = st_cols_widgets[0].text_input(
         "Insert sigma for Gaussian filtering (positive, odd integer):", value=1
     )
-    # add input for filtering method!
+    # add input for filtering method?
     # chosen_filtering_method = st_cols_widgets[0].radio(
     #     "Choose filtering method:", options=("Bilateral", "Gaussian")
     # )
-    filtered_image = filtering_step(greyscale_roof, int(chosen_sigma), "g")
+    filtered_gs_roof = filtering_step(greyscale_roof, int(chosen_sigma), "b")
 
     chosen_binarisation_technique = st_cols_widgets[0].radio(
         "Select the desired binarisation technique",
@@ -118,7 +118,7 @@ def obstacle_detection_page():
     )
 
     if chosen_binarisation_technique == "Simple":
-        binarized_image = binarization_step(filtered_image, method="s")
+        binarized_gs_roof = binarization_step(filtered_gs_roof, method="s")
     elif chosen_binarisation_technique == "Adaptive":
         chosen_blocksize = st_cols_widgets[0].text_input(
             """
@@ -126,8 +126,8 @@ def obstacle_detection_page():
             """,
             value=21,
         )
-        binarized_image = binarization_step(
-            filtered_image, method="a", blocksize=int(chosen_blocksize)
+        binarized_gs_roof = binarization_step(
+            filtered_gs_roof, method="a", adaptive_kernel_size=int(chosen_blocksize)
         )
     elif chosen_binarisation_technique == "Composite":
         chosen_tolerance = st_cols_widgets[0].text_input(
@@ -137,32 +137,32 @@ def obstacle_detection_page():
             """,
             value=10,
         )
-        binarized_image = binarization_step(
-            filtered_image, method="c", composite_tolerance=int(chosen_tolerance)
+        binarized_gs_roof = binarization_step(
+            filtered_gs_roof, method="c", composite_tolerance=int(chosen_tolerance)
         )
     # why is this needed?
     else:
-        binarized_image = binarization_step(filtered_image, method="s")
+        binarized_gs_roof = binarization_step(filtered_gs_roof, method="s")
 
-    blurred_roof = morphological_opening_step(binarized_image)
+    blurred_gs_roof = morphological_opening_step(binarized_gs_roof)
 
     chosen_drawing_technique = st_cols_widgets[0].radio(
         "Select the desired drawing technique", ("Bounding Box", "Bounding Polygon")
     )
     if chosen_drawing_technique == "Bounding Box":
-        boundary_type = "bbox"
+        boundary_type = "box"
     else:
         boundary_type = "polygon"
 
     obstacles_blobs, roof_with_bboxes, obstacles_coordinates = detect_obstacles(
-        blurred_roof=blurred_roof,
+        blurred_roof=blurred_gs_roof,
         source_image=greyscale_roof,
         box_or_polygon=boundary_type,
         min_area="auto",
     )
 
     # im_draw, im_result, im_error, im_rel_area_error = surface_absolute_error(
-    #     binarized_image,
+    #     binarized_gs_roof,
     #     pixel_coord_roof,
     #     pixel_coord_obs,
     #     obstacles_coordinates
@@ -170,7 +170,7 @@ def obstacle_detection_page():
 
     fig, ax = plt.subplots(figsize=(3, 1))
     n, bins, patches = ax.hist(
-        filtered_image.flatten(), bins=range(256), edgecolor="black", alpha=0.9
+        filtered_gs_roof.flatten(), bins=range(256), edgecolor="black", alpha=0.9
     )
     ax.set_title("Cropped Roof Greyscale Histogram")
     ax.set_xlim(0, 255)
@@ -186,7 +186,7 @@ def obstacle_detection_page():
     )
     # st_cols[1].image(greyscale_roof, use_column_width=True, caption="Cropped Roof GS")
     st_cols_widgets[2].image(
-        filtered_image,
+        filtered_gs_roof,
         use_column_width=True,
         caption="Cropped Roof (Greyscale) After Filtering",
     )
