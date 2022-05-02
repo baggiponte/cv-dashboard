@@ -33,10 +33,10 @@ def dropbox_oauth2_connect(
         3. Copy the authorization code.
         """
     )
-    auth_code = input("4. Enter the authorization code here: ")
+    authorization_code = input("4. Enter the authorization code here: ")
 
     try:
-        return dropbox_oauth2_flow.finish(auth_code)
+        return dropbox_oauth2_flow.finish(authorization_code)
     except:  # noqa: E722
         print("Invalid authorization code!")
         return None
@@ -53,26 +53,23 @@ def st_dropbox_oauth2_connect(
 
     authorization_url = dropbox_oauth_flow.start()
 
-    st_text_boxes = []
-    for i in range(4):
-        st_text_boxes.append(st.empty())
+    placeholder = st.empty()
 
-    with st_text_boxes[0]:
-        st.write("1. Go to: " + authorization_url)
-    with st_text_boxes[1]:
-        st.write('2. Click "Allow" (you might have to log in first)')
-    with st_text_boxes[2]:
+    with placeholder.container():
+        st.title(":key: Dropbox Authentication")
+        st.markdown(f"1. Go to [this url]({authorization_url}).")
+        st.write('2. Click "Allow" (you might have to log in first).')
         st.write("3. Copy the authorization code.")
-    with st_text_boxes[3]:
-        auth_code = st.text_input("4. Enter the authorization code here: ")
+        st.write("4. Enter the authorization code here: ")
+        authorization_code = st.text_input("")
 
     try:
-        complete_oauth_flow = dropbox_oauth_flow.finish(auth_code)
-        return st_text_boxes, complete_oauth_flow
+        complete_oauth_flow = dropbox_oauth_flow.finish(authorization_code)
+        return placeholder, complete_oauth_flow
     except:  # noqa: E722
-        if auth_code is not None and len(auth_code):
+        if authorization_code is not None and len(authorization_code):
             st.error("Invalid authorization code!")
-        return st_text_boxes, None
+        return placeholder, None
 
 
 def _get_team_member_id(dbx_team_app, dbx_user_email):

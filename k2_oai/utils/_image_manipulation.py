@@ -10,7 +10,7 @@ import cv2 as cv
 import numpy as np
 from numpy.core.multiarray import ndarray
 
-from k2_oai.utils._parsers import parse_str_as_array
+from k2_oai.utils._parsers import parse_str_as_coordinates
 
 
 def read_image_from_bytestring(
@@ -98,13 +98,15 @@ def draw_boundaries(
         Image with labels drawn.
     """
 
-    points: np.array = parse_str_as_array(roof_coordinates).reshape((-1, 1, 2))
+    points: np.array = parse_str_as_coordinates(
+        roof_coordinates, sort_coordinates=True
+    ).reshape((-1, 1, 2))
     result: np.ndarray = cv.polylines(
         input_image, np.int32([points]), True, (0, 0, 255), 2
     )
 
     for obst in obstacle_coordinates:
-        points: np.array = parse_str_as_array(obst).reshape((-1, 1, 2))
+        points: np.array = parse_str_as_coordinates(obst).reshape((-1, 1, 2))
         result: np.array = cv.polylines(
             result, np.int32([points]), True, (255, 0, 0), 2
         )
@@ -135,7 +137,7 @@ def draw_boundaries(
     # return result
 
 
-def compute_rotation_matrix(coordinates_array):
+def _compute_rotation_matrix(coordinates_array):
     diff = np.subtract(coordinates_array[1], coordinates_array[0])
     theta = np.mod(np.arctan2(diff[0], diff[1]), np.pi / 2)
     center = coordinates_array[0]
@@ -162,11 +164,11 @@ def rotate_and_crop_roof(input_image: ndarray, roof_coordinates: str) -> ndarray
     ndarray
         The rotated and cropped roof.
     """
-    coordinates_array: ndarray = parse_str_as_array(
+    coordinates_array: ndarray = parse_str_as_coordinates(
         roof_coordinates, sort_coordinates=True
     )
 
-    diff, rotation_matrix = compute_rotation_matrix(coordinates_array)
+    diff, rotation_matrix = _compute_rotation_matrix(coordinates_array)
 
     rotated_image: ndarray = cv.warpAffine(
         input_image,

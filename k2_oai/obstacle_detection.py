@@ -66,15 +66,16 @@ def filtering_step(input_image: ndarray, sigma: int, method: str = "b") -> ndarr
                 input_image[:, :, 0:3] = _bilateral_filter(image_to_bgr, sigma)
                 return input_image
             elif input_image.shape[2] <= 3:  # bgr image
-                output_image = _bilateral_filter(input_image, sigma)
-                return cv.cvtColor(output_image, cv.COLOR_BGR2BGRA)
+                filtered_image = _bilateral_filter(input_image, sigma)
+                return cv.cvtColor(filtered_image, cv.COLOR_BGR2BGRA)
 
         # grayscale image
-        output_image = _bilateral_filter(input_image, sigma)
-        return cv.cvtColor(output_image, cv.COLOR_GRAY2BGRA)
+        filtered_image = _bilateral_filter(input_image, sigma)
+        return cv.cvtColor(filtered_image, cv.COLOR_GRAY2BGRA)
 
-    elif method == "g":
-        return cv.GaussianBlur(input_image, (0, 0), sigma)
+    else:
+        filtered_image = cv.GaussianBlur(input_image, (0, 0), sigma)
+        return cv.cvtColor(filtered_image, cv.COLOR_GRAY2BGRA)
 
 
 def _compute_otsu_thresholding(input_image, zeros):

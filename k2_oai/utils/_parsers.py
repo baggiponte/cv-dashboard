@@ -11,50 +11,40 @@ import numpy as np
 from numpy.core.multiarray import ndarray
 
 
-def _parse_extension(extension: str) -> str:
-    """
-    Makes sure an extension starts with '.' and is lowercase.
-
+def parse_str_as_coordinates(
+    string: str, dtype=np.int32, sort_coordinates: bool = False
+) -> np.array:
+    """Parses a string of coordinates into a list of lists of strings.
     Parameters
     ----------
-    extension : str
-        A string of a file extension.
-
+    string : str
+        A string of coordinates.
+    dtype: numpy dtype (default = np.int32)
+        The datatype of the numpy array to be returned.
+    sort_coordinates: bool (default = False)
+        Whether to sort the coordinates.
     Returns
     -------
-    str
-        The same string with "." prepended (if missing) and lowercase.
+    np.ndarray
+        A list of lists of integers, denoting pixel coordinates, i.e.
+        [[x1, y1], [x2, y2], ...].
     """
-    return (
-        f".{extension.lower()}" if not extension.startswith(".") else extension.lower()
+    if not isinstance(string, str):
+        raise TypeError(f"{type(string)} is not a valid type.")
+
+    parsed_string = (
+        sorted(literal_eval(string)) if sort_coordinates else literal_eval(string)
     )
 
-
-def parse_extensions(extensions: str | list[str]) -> list[str]:
-    """
-    Parses a string or a list of strings of file extension(s),
-    and makes sure they are lowercase and start with a '.'. Then, returns a list.
-
-    Parameters
-    ----------
-    extensions : str or list[str]
-        A string or a list of strings of file extension(s).
-
-    Returns
-    -------
-    list[str]
-        A list of lowercase file extension(s). If missing, a '.' is prepended.
-    """
-    if isinstance(extensions, str):
-        return [_parse_extension(extensions)]
-
-    return [_parse_extension(extension) for extension in extensions]
+    if dtype:
+        return np.array(parsed_string, dtype=dtype)
+    return np.array(parsed_string)
 
 
-def parse_str_as_array(
+def experimental_parse_str_as_array(
     array_string: str | ndarray,
-    dtype: str = np.uint8,
     sort_coordinates: bool = False,
+    dtype=np.uint8,
 ) -> ndarray:
     """Parses a string of coordinates into a Numpy `ndarray`.
 

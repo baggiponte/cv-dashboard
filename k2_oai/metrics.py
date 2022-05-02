@@ -8,7 +8,7 @@ import numpy as np
 from matplotlib import pyplot as plt
 from numpy.core.multiarray import ndarray
 
-from k2_oai.utils import compute_rotation_matrix, parse_str_as_array
+from k2_oai.utils import _compute_rotation_matrix, experimental_parse_str_as_array
 
 
 def surface_absolute_error(
@@ -21,7 +21,7 @@ def surface_absolute_error(
     """ """
 
     if isinstance(roof_coordinates, (str, ndarray)):
-        roof_coordinates: ndarray = parse_str_as_array(
+        roof_coordinates: ndarray = experimental_parse_str_as_array(
             roof_coordinates, sort_coordinates=True
         )
     else:
@@ -29,18 +29,18 @@ def surface_absolute_error(
             f"Expected a string or a numpy array, but got {type(roof_coordinates)}"
         )
 
-    _, rotation_matrix = compute_rotation_matrix(roof_coordinates)
+    _, rotation_matrix = _compute_rotation_matrix(roof_coordinates)
 
     black_background = np.zeros(input_image.shape, np.uint8)
 
     if isinstance(obstacle_coordinates, list):
         obstacle_list: list[ndarray] = [
-            parse_str_as_array(coordinates, sort_coordinates=True)
+            experimental_parse_str_as_array(coordinates, sort_coordinates=True)
             for coordinates in obstacle_coordinates
         ]
     elif isinstance(obstacle_coordinates, (str, ndarray)):
         obstacle_list: list[ndarray] = [
-            parse_str_as_array(obstacle_coordinates, sort_coordinates=True)
+            experimental_parse_str_as_array(obstacle_coordinates, sort_coordinates=True)
         ]
     else:
         raise TypeError(
