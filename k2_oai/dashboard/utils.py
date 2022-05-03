@@ -8,6 +8,12 @@ import pandas as pd
 import streamlit as st
 
 from k2_oai.io import dropbox as dbx
+from k2_oai.obstacle_detection import (
+    binarization_step,
+    detect_obstacles,
+    filtering_step,
+    morphological_opening_step,
+)
 from k2_oai.utils import draw_boundaries, rotate_and_crop_roof
 
 
@@ -115,7 +121,7 @@ def load_photos_from_roof_id(roof_id, photos_metadata, chosen_folder):
     return dbx_load_photo(chosen_folder, photo_name)
 
 
-def crop_roofs_from_id(roof_id, photos_metadata, chosen_folder):
+def crop_roofs_from_roof_id(roof_id, photos_metadata, chosen_folder):
     roof_px_coord, obstacles_px_coord = get_coordinates_from_roof_id(
         roof_id, photos_metadata
     )
@@ -129,3 +135,43 @@ def crop_roofs_from_id(roof_id, photos_metadata, chosen_folder):
     greyscale_roof = rotate_and_crop_roof(greyscale_image, roof_px_coord)
 
     return k2_labelled_image, bgr_roof, greyscale_roof
+
+
+def obstacle_detection_pipeline(
+    greyscale_roof,
+    sigma,
+    filtering_method,
+    binarization_method,
+    blocksize,
+    tolerance,
+    boundary_type,
+    return_filtered_roof: bool = False,
+):
+
+    filtered_roof = filtering_step(greyscale_roof, sigma, filtering_method.lower())
+
+    if binarization_method == "Simple":
+        binarized_roof = binarization_step(filtered_roof, method="s")
+    elif binarization_method == "Adaptive":
+        binarized_roof = binarization_step(
+            filtered_roof, method="a", adaptive_kernel_size=int(blocksize)
+        )
+    else:
+        binarized_roof = binarization_step(
+            filtered_roof, method="c", composite_tolerance=int(tolerance)
+        )
+
+    blurred_roof = morphological_opening_step(binarized_roof)
+
+    boundary_type = "box" if boundary_type == "Bounding Box" else "polygon"
+
+    blobs, roof_with_bboxes, obstacles_coordinates = detect_obstacles(
+        blurred_roof=blurred_roof,
+        source_image=greyscale_roof,
+        box_or_polygon=boundary_type,
+        min_area="auto",
+    )
+
+    if return_filtered_roof:
+        return blobs, roof_with_bboxes, obstacles_coordinates, filtered_roof
+    return blobs, roof_with_bboxes, obstacles_coordinates

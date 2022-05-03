@@ -2,12 +2,6 @@ import matplotlib.pyplot as plt
 import streamlit as st
 
 from k2_oai.dashboard import utils
-from k2_oai.obstacle_detection import (
-    binarization_step,
-    detect_obstacles,
-    filtering_step,
-    morphological_opening_step,
-)
 
 
 def obstacle_detection_page():
@@ -56,7 +50,7 @@ def obstacle_detection_page():
         )
         st.markdown("---")
 
-    k2_labelled_image, bgr_roof, greyscale_roof = utils.crop_roofs_from_id(
+    k2_labelled_image, bgr_roof, greyscale_roof = utils.crop_roofs_from_roof_id(
         chosen_roof_id, photos_metadata, chosen_folder
     )
 
@@ -90,6 +84,7 @@ def obstacle_detection_page():
             chosen_blocksize = st.text_input(
                 "Size of the pixel neighbourhood (positive, odd integer):", value=21
             )
+            chosen_tolerance = None
         elif chosen_binarisation_technique == "Composite":
             chosen_tolerance = st.text_input(
                 """
@@ -98,35 +93,28 @@ def obstacle_detection_page():
                 """,
                 value=10,
             )
+            chosen_blocksize = None
+        else:
+            chosen_blocksize, chosen_tolerance = None, None
 
         chosen_drawing_technique = st.radio(
             "Select the desired drawing technique", ("Bounding Box", "Bounding Polygon")
         )
 
-    filtered_gs_roof = filtering_step(
-        greyscale_roof, chosen_sigma, chosen_filtering_method.lower()
-    )
-
-    if chosen_binarisation_technique == "Simple":
-        binarized_gs_roof = binarization_step(filtered_gs_roof, method="s")
-    elif chosen_binarisation_technique == "Adaptive":
-        binarized_gs_roof = binarization_step(
-            filtered_gs_roof, method="a", adaptive_kernel_size=int(chosen_blocksize)
-        )
-    else:
-        binarized_gs_roof = binarization_step(
-            filtered_gs_roof, method="c", composite_tolerance=int(chosen_tolerance)
-        )
-
-    blurred_gs_roof = morphological_opening_step(binarized_gs_roof)
-
-    boundary_type = "box" if chosen_drawing_technique == "Bounding Box" else "polygon"
-
-    obstacles_blobs, roof_with_bboxes, obstacles_coordinates = detect_obstacles(
-        blurred_roof=blurred_gs_roof,
-        source_image=greyscale_roof,
-        box_or_polygon=boundary_type,
-        min_area="auto",
+    (
+        obstacle_blobs,
+        roof_with_bboxes,
+        obstacles_coordinates,
+        filtered_gs_roof,
+    ) = utils.obstacle_detection_pipeline(
+        greyscale_roof=greyscale_roof,
+        sigma=chosen_sigma,
+        filtering_method=chosen_filtering_method,
+        binarization_method=chosen_binarisation_technique,
+        blocksize=chosen_blocksize,
+        tolerance=chosen_tolerance,
+        boundary_type=chosen_drawing_technique,
+        return_filtered_roof=True,
     )
 
     # +-------------------------+
@@ -174,7 +162,7 @@ def obstacle_detection_page():
     # | Plot Model Results |
     # +--------------------+
 
-    st.subheader("Obstacle Detection")
+    st.subheader("Obstacle Detection, Visualized")
 
     st_results_widgets = st.columns((1, 1))
 
@@ -192,7 +180,7 @@ def obstacle_detection_page():
     )
 
     st_results_widgets[1].image(
-        (obstacles_blobs * 60) % 256,
+        (obstacle_blobs * 60) % 256,
         use_column_width=True,
         caption="Auto Obstacle Blobs (Greyscale)",
     )
