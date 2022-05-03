@@ -98,53 +98,24 @@ def draw_boundaries(
         Image with labels drawn.
     """
 
-    points: np.array = parse_str_as_coordinates(
-        roof_coordinates, sort_coordinates=True
-    ).reshape((-1, 1, 2))
-    result: np.ndarray = cv.polylines(
-        input_image, np.int32([points]), True, (0, 0, 255), 2
-    )
+    points: np.array = parse_str_as_coordinates(roof_coordinates).reshape((-1, 1, 2))
+    result: np.ndarray = cv.polylines(input_image, [points], True, (0, 0, 255), 2)
 
     for obst in obstacle_coordinates:
         points: np.array = parse_str_as_coordinates(obst).reshape((-1, 1, 2))
-        result: np.array = cv.polylines(
-            result, np.int32([points]), True, (255, 0, 0), 2
-        )
+        result: np.array = cv.polylines(result, [points], True, (255, 0, 0), 2)
 
     return result
 
-    # if isinstance(roof_coordinates, str):
-    #     roof_coordinates: ndarray = parse_str_as_array(
-    #         roof_coordinates, sort_coordinates=True
-    #     )
-    #
-    # obstacle_coordinate_pairs: ndarray = roof_coordinates.reshape((-1, 1, 2))
-    # result: ndarray = cv.polylines(
-    #     input_image, np.int32([obstacle_coordinate_pairs]), True, (0, 0, 255), 2
-    # )
-    #
-    # if obstacle_coordinates:
-    #     if isinstance(obstacle_coordinates, str):
-    #         obstacle_coordinates: ndarray = parse_str_as_array(
-    #             obstacle_coordinates, sort_coordinates=True
-    #         )
-    #     for obstacle in obstacle_coordinates:
-    #         obstacle_coordinate_pairs: ndarray = obstacle.reshape((-1, 1, 2))
-    #         result: ndarray = cv.polylines(
-    #             result, np.int32([obstacle_coordinate_pairs]), True, (255, 0, 0), 2
-    #         )
-    #
-    # return result
 
-
-def _compute_rotation_matrix(coordinates_array):
-    diff = np.subtract(coordinates_array[1], coordinates_array[0])
+def _compute_rotation_matrix(coordinates):
+    diff = np.subtract(coordinates[1], coordinates[0])
     theta = np.mod(np.arctan2(diff[0], diff[1]), np.pi / 2)
-    center = coordinates_array[0]
-    rotation_matrix: ndarray = cv.getRotationMatrix2D(
+    center = coordinates[0]
+
+    return cv.getRotationMatrix2D(
         (int(center[0]), int(center[1])), -theta * 180 / np.pi, 1
     )
-    return diff, rotation_matrix
 
 
 def rotate_and_crop_roof(input_image: ndarray, roof_coordinates: str) -> ndarray:
@@ -164,28 +135,58 @@ def rotate_and_crop_roof(input_image: ndarray, roof_coordinates: str) -> ndarray
     ndarray
         The rotated and cropped roof.
     """
-    coordinates_array: ndarray = parse_str_as_coordinates(
-        roof_coordinates, sort_coordinates=True
+    coord = parse_str_as_coordinates(
+        roof_coordinates, dtype="int32", sort_coordinates=True
     )
 
-    diff, rotation_matrix = _compute_rotation_matrix(coordinates_array)
-
-    rotated_image: ndarray = cv.warpAffine(
-        input_image,
-        rotation_matrix,
-        input_image.shape[0:2],
-        cv.INTER_LINEAR,
-        cv.BORDER_CONSTANT,
-    )
-
-    if diff[1] > 0:
-        dist_y = np.linalg.norm(coordinates_array[1] - coordinates_array[0]).astype(int)
-        dist_x = np.linalg.norm(coordinates_array[2] - coordinates_array[0]).astype(int)
+    if len(input_image.shape) < 3:
+        im_alpha = cv.cvtColor(input_image, cv.COLOR_GRAY2BGRA)
     else:
-        dist_y = np.linalg.norm(coordinates_array[2] - coordinates_array[0]).astype(int)
-        dist_x = np.linalg.norm(coordinates_array[1] - coordinates_array[0]).astype(int)
+        im_alpha = cv.cvtColor(input_image, cv.COLOR_BGR2BGRA)
 
-    return rotated_image[
-        coordinates_array[0][1] : coordinates_array[0][1] + dist_y,
-        coordinates_array[0][0] : coordinates_array[0][0] + dist_x,
-    ]
+    # rectangular roofs
+    if len(coord) == 4:
+        rotation_matrix = _compute_rotation_matrix(coord)
+
+        im_affine = cv.warpAffine(
+            im_alpha,
+            rotation_matrix,
+            im_alpha.shape[0:2],
+            cv.INTER_LINEAR,
+            cv.BORDER_CONSTANT,
+        )
+
+        diff = np.subtract(coord[1], coord[0])
+
+        if diff[1] > 0:
+            dist_y = np.linalg.norm(coord[1] - coord[0]).astype(int)
+            dist_x = np.linalg.norm(coord[2] - coord[0]).astype(int)
+        else:
+            dist_y = np.linalg.norm(coord[2] - coord[0]).astype(int)
+            dist_x = np.linalg.norm(coord[1] - coord[0]).astype(int)
+
+        im_result = im_affine[
+            coord[0][1] : coord[0][1] + dist_y, coord[0][0] : coord[0][0] + dist_x, :
+        ]
+
+    # polygonal roofs
+    else:
+        coord = parse_str_as_coordinates(
+            roof_coordinates, dtype="int32", sort_coordinates=False
+        )
+        mask = np.zeros(input_image.shape[0:2], dtype="uint8")
+
+        pts = np.array(coord, np.int32).reshape((-1, 1, 2))
+
+        cv.fillConvexPoly(mask, pts, (255, 255, 255))
+
+        im_alpha[:, :, 3] = mask
+
+        bot_right = np.max(pts, axis=0)
+        top_left = np.min(pts, axis=0)
+
+        im_result = im_alpha[
+            top_left[0][1] : bot_right[0][1], top_left[0][0] : bot_right[0][0], :
+        ]
+
+    return im_result
