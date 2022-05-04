@@ -14,7 +14,7 @@ def _load_random_photo(roofs_list):
 
 
 def _mark_photo(mark: str, roof_id, label_data):
-    label_data.loc[roof_id, "label_quality"] = mark
+    label_data.loc[label_data["roof_id"] == roof_id, "label_quality"] = mark
 
 
 def _load_previous_photo():
