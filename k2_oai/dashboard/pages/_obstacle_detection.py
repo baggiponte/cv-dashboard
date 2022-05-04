@@ -58,13 +58,13 @@ def _record_hyperparams(
 
 
 def _save_data_to_dropbox(
-    labels_data=None,
+    hyperparams_data=None,
     filename="roofs-obstacles_hyperparameters.csv",
     upload_to="/k2/hyperparameters",
 ):
 
-    if labels_data is None:
-        labels_data = st.session_state["obstacles_hyperparameters"]
+    if hyperparams_data is None:
+        hyperparams_data = st.session_state["obstacles_hyperparameters"]
 
     dbx_app = utils.dbx_get_connection()
 
@@ -73,7 +73,11 @@ def _save_data_to_dropbox(
     target_file_path = f"/tmp/{timestamp}-{filename}.csv"
     upload_path = f"{upload_to}/{timestamp}-{filename}.csv"
 
-    (labels_data.loc[lambda df: df.sigma.notna()].to_csv(target_file_path, index=False))
+    (
+        hyperparams_data.dropna(subset=["sigma", "label_quality"], how="all").to_csv(
+            target_file_path, index=False
+        )
+    )
 
     dbx.upload_file_to_dropbox(dbx_app, target_file_path, upload_path)
 
