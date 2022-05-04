@@ -11,11 +11,19 @@ from k2_oai.dashboard import utils
 from k2_oai.io import dropbox as dbx
 
 
-def _load_random_photo(roofs_list):
+def _load_random_photo(roofs_list=None):
+    if roofs_list is None:
+        roofs_list = st.session_state["roofs_to_label"]
     st.session_state["roof_id_selector"] = np.random.choice(roofs_list.roof_id)
 
 
-def _mark_photo(mark: str, roof_id, label_data):
+def _mark_photo(mark: str, roof_id=None, label_data=None):
+    if roof_id is None:
+        roof_id = st.session_state["roof_id_selector"]
+
+    if label_data is None:
+        label_data = st.session_state["label_quality_data"]
+
     label_data.loc[label_data["roof_id"] == roof_id, "label_quality"] = mark
 
 
@@ -28,10 +36,13 @@ def _load_next_photo():
 
 
 def _save_labels_to_dropbox(
-    labels_data,
+    labels_data=None,
     filename="roof-obstacles_labels_quality",
     upload_to="/k2/metadata/transformed_data",
 ):
+
+    if labels_data is None:
+        labels_data = st.session_state["label_quality_data"]
 
     dbx_app = utils.dbx_get_connection()
 
@@ -80,9 +91,9 @@ def obstacle_labeller_page():
 
         st.markdown("---")
 
-    # +----------------------+
-    # | Create New DataFrame |
-    # +----------------------+
+    # +---------------------------------------------------+
+    # | Cache DataFrame to store label_quality assessment |
+    # +---------------------------------------------------+
 
     if "label_quality_data" not in st.session_state:
         st.session_state["label_quality_data"] = (
@@ -142,22 +153,23 @@ def obstacle_labeller_page():
         "Keep label",
         help="Mark the label as good",
         on_click=_mark_photo,
-        args=("Y", chosen_roof_id, label_quality_data),
+        args=("Y",),
     )
 
     st_drop.button(
         "Drop label",
         help="Mark the label as bad",
         on_click=_mark_photo,
-        args=("N", chosen_roof_id, label_quality_data),
+        args=("N",),
     )
 
     st_maybe.button(
         "Maybe",
         help="Do not mark the label and move on",
         on_click=_mark_photo,
-        args=("M", chosen_roof_id, label_quality_data),
+        args=("M",),
     )
+
     # +---------------+
     # | Plot the roof |
     # +---------------+
@@ -218,4 +230,4 @@ def obstacle_labeller_page():
             st.dataframe(label_quality_data)
 
     if st_save.button("Save labels", help="Save the labels vetted so far to Dropbox"):
-        _save_labels_to_dropbox(label_quality_data)
+        _save_labels_to_dropbox()
