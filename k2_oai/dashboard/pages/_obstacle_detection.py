@@ -22,7 +22,16 @@ def _mark_photo(mark: str, roof_id=None, label_data=None):
     label_data.loc[label_data["roof_id"] == roof_id, "label_quality"] = mark
 
 
-def _record_hyperparams(roof_id=None, label_data=None):
+def _record_hyperparams(
+    sigma,
+    filtering_method,
+    binarization_method,
+    bin_adaptive_kernel,
+    bin_composite_tolerance,
+    drawing_technique,
+    roof_id=None,
+    label_data=None,
+):
 
     if roof_id is None:
         roof_id = st.session_state["roof_id_selector"]
@@ -30,24 +39,22 @@ def _record_hyperparams(roof_id=None, label_data=None):
     if label_data is None:
         label_data = st.session_state["obstacles_hyperparameters"]
 
-    label_data.loc[lambda df: df.roof_id == roof_id, "sigma"] = st.session_state[
-        "sigma"
-    ]
+    label_data.loc[lambda df: df.roof_id == roof_id, "sigma"] = sigma
     label_data.loc[
         lambda df: df.roof_id == roof_id, "filtering_method"
-    ] = st.session_state["filtering_method"]
+    ] = filtering_method
     label_data.loc[
         lambda df: df.roof_id == roof_id, "binarization_method"
-    ] = st.session_state["binarization_method"]
+    ] = binarization_method
     label_data.loc[
         lambda df: df.roof_id == roof_id, "bin_adaptive_kernel"
-    ] = st.session_state["bin_adaptive_kernel"]
+    ] = bin_adaptive_kernel
     label_data.loc[
         lambda df: df.roof_id == roof_id, "bin_composite_tolerance"
-    ] = st.session_state["bin_composite_tolerance"]
+    ] = bin_composite_tolerance
     label_data.loc[
         lambda df: df.roof_id == roof_id, "drawing_technique"
-    ] = st.session_state["drawing_technique"]
+    ] = drawing_technique
 
 
 def _save_data_to_dropbox(
@@ -130,12 +137,6 @@ def obstacle_detection_page():
             "obstacles_hyperparameters"
         ].loc[lambda df: df.sigma.isna()]
 
-    if "bin_adaptive_kernel" not in st.session_state:
-        st.session_state["bin_adaptive_kernel"] = None
-
-    if "bin_composite_tolerance" not in st.session_state:
-        st.session_state["bin_composite_tolerance"] = None
-
     obstacles_hyperparameters = st.session_state["obstacles_hyperparameters"]
     roofs_to_label = st.session_state["roofs_to_label"]
 
@@ -182,12 +183,6 @@ def obstacle_detection_page():
 
         st_subheader.subheader("Model Hyperparameters")
 
-        st_save_params.button(
-            "💾",
-            help="Record Hyperparameters",
-            on_click=_record_hyperparams,
-        )
-
         chosen_sigma = st.slider(
             "Insert sigma for filtering (positive, odd integer):",
             min_value=1,
@@ -232,6 +227,20 @@ def obstacle_detection_page():
             key="drawing_technique",
         )
 
+        st_save_params.button(
+            "💾",
+            help="Record Hyperparameters",
+            on_click=_record_hyperparams,
+            args=(
+                chosen_sigma,
+                chosen_filtering_method,
+                chosen_binarisation_method,
+                chosen_blocksize,
+                chosen_tolerance,
+                chosen_drawing_technique,
+            ),
+        )
+
     (
         obstacle_blobs,
         roof_with_bboxes,
@@ -252,11 +261,11 @@ def obstacle_detection_page():
     # | Roof & Color Histograms |
     # +-------------------------+
 
-    st_roof_widgets = st.columns((1, 1))
+    st_roof, st_histograms = st.columns((1, 1))
 
     # original roof
     # -------------
-    st_roof_widgets[0].image(
+    st_roof.image(
         k2_labelled_image,
         use_column_width=True,
         channels="BGRA",
@@ -277,7 +286,7 @@ def obstacle_detection_page():
     )
     ax.set_title("Cropped Roof RGB Histogram")
     ax.set_xlim(0, 255)
-    st_roof_widgets[1].pyplot(fig, use_column_width=True)
+    st_histograms.pyplot(fig, use_column_width=True)
 
     # greyscale histogram
     # -------------------
@@ -287,7 +296,7 @@ def obstacle_detection_page():
     )
     ax.set_title("Roof Greyscale Histogram After Filtering")
     ax.set_xlim(0, 255)
-    st_roof_widgets[1].pyplot(fig, use_column_width=True)
+    st_histograms.pyplot(fig, use_column_width=True)
 
     # +--------------------+
     # | Plot Model Results |
