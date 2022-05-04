@@ -365,7 +365,11 @@ def obstacle_detection_page():
 
     with st_data:
         with st.expander("View stored hyperparameters"):
-            st.dataframe(obstacles_hyperparameters)
+            st.dataframe(
+                obstacles_hyperparameters.dropna(
+                    subset=["label_quality", "sigma"], how="all"
+                )
+            )
 
     if st_save.button("Save labels", help="Save the labels vetted so far to Dropbox"):
         _save_data_to_dropbox(obstacles_hyperparameters)

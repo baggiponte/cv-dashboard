@@ -227,7 +227,7 @@ def obstacle_labeller_page():
 
     with st_data:
         with st.expander("View the label quality dataset:"):
-            st.dataframe(label_quality_data)
+            st.dataframe(label_quality_data.dropna(subset="label_quality"))
 
     if st_save.button("Save labels", help="Save the labels vetted so far to Dropbox"):
         _save_labels_to_dropbox()
