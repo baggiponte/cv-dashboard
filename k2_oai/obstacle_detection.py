@@ -74,8 +74,7 @@ def filtering_step(input_image: ndarray, sigma: int, method: str = "b") -> ndarr
         return cv.cvtColor(filtered_image, cv.COLOR_GRAY2BGRA)
 
     else:
-        filtered_image = cv.GaussianBlur(input_image, (0, 0), sigma)
-        return cv.cvtColor(filtered_image, cv.COLOR_GRAY2BGRA)
+        return cv.GaussianBlur(input_image, (0, 0), sigma)
 
 
 def _compute_otsu_thresholding(input_image, zeros):

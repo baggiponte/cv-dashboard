@@ -128,7 +128,7 @@ def obstacle_detection_page():
     if "roofs_to_label" not in st.session_state:
         st.session_state["roofs_to_label"] = st.session_state[
             "obstacles_hyperparameters"
-        ].loc[lambda df: df.label_quality.isna()]
+        ].loc[lambda df: df.sigma.isna()]
 
     if "bin_adaptive_kernel" not in st.session_state:
         st.session_state["bin_adaptive_kernel"] = None
