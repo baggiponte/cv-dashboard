@@ -211,7 +211,6 @@ def obstacle_detection_page():
         if chosen_binarisation_method == "Adaptive":
             chosen_blocksize = st.text_input(
                 "Size of the pixel neighbourhood (positive, odd integer):",
-                value=21,
                 key="bin_adaptive_kernel",
             )
             chosen_tolerance = None
@@ -221,7 +220,6 @@ def obstacle_detection_page():
                 Insert the desired tolerance for composite binarisation.
                 If 'auto', tolerance will be deduced from the histogram's variance.
                 """,
-                value="auto",
                 key="bin_composite_tolerance",
             )
             chosen_blocksize = None

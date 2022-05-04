@@ -154,7 +154,7 @@ def obstacle_detection_pipeline(
         binarized_roof = binarization_step(filtered_roof, method="s")
     elif binarization_method == "Adaptive":
         binarized_roof = binarization_step(
-            filtered_roof, method="a", adaptive_kernel_size=int(blocksize)
+            filtered_roof, method="a", adaptive_kernel_size=blocksize
         )
     else:
         binarized_roof = binarization_step(
