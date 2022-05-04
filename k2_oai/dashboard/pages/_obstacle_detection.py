@@ -13,7 +13,9 @@ def obstacle_detection_page():
     st.title(":house_with_garden: Obstacle Detection Dashboard")
 
     with st.sidebar:
+
         st.subheader("Data Source")
+
         chosen_folder = st.selectbox(
             "Select the folder to load the photos from: ",
             options=[
@@ -41,11 +43,15 @@ def obstacle_detection_page():
     # +---------------------------------------+
 
     with st.sidebar:
+
         st.subheader("Target Roof")
+
+        roof_ids = sorted(photos_metadata.roof_id.unique())
+
         chosen_roof_id = int(
             st.selectbox(
                 "Select the roof identifier: ",
-                options=sorted(photos_metadata.roof_id.unique()),
+                options=roof_ids,
             )
         )
         st.markdown("---")
