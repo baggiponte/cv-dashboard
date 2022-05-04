@@ -156,8 +156,8 @@ def binarization_step(
             if threshold_kernel % 2 == 0:
                 threshold_kernel += 1
         else:
-            is_positive_odd_integer(adaptive_kernel_size)
-            threshold_kernel: int = adaptive_kernel_size
+            is_positive_odd_integer(int(adaptive_kernel_size))
+            threshold_kernel: int = int(adaptive_kernel_size)
 
         binarized_image = cv.adaptiveThreshold(
             masked_image,
