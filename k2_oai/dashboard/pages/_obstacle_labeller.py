@@ -1,12 +1,14 @@
 """
 Dashboard page/mode to accept or reject the obstacle label available from the database.
 """
+
+from datetime import datetime
+
 import numpy as np
 import streamlit as st
 
 from k2_oai.dashboard import utils
-
-# from k2_oai.io import dropbox as dbx
+from k2_oai.io import dropbox as dbx
 
 
 def _load_random_photo(roofs_list):
@@ -25,24 +27,26 @@ def _load_next_photo():
     st.session_state["roof_id_selector"] += 1
 
 
-# def save_labels_to_dropbox(
-#     data,
-#     filename="roof-obstacles_labels_quality",
-#     upload_to="/k2/metadata/transformed_data",
-#     append: bool = True,
-# ):
-#
-#     dbx_app = utils.dbx_get_connection()
-#
-#     target_file_path = f"/tmp/{filename}.csv"
-#     upload_path = f"{upload_to}/{filename}.csv"
-#
-#     if append:
-#         data.to_csv(target_file_path, index=False, header=False, mode="a")
-#     else:
-#         data.to_csv(target_file_path, index=False, header=True, mode="w")
-#
-#     dbx.upload_file_to_dropbox(dbx_app, target_file_path, upload_path)
+def _save_labels_to_dropbox(
+    labels_data,
+    filename="roof-obstacles_labels_quality",
+    upload_to="/k2/metadata/transformed_data",
+):
+
+    dbx_app = utils.dbx_get_connection()
+
+    timestamp = datetime.now().replace(microsecond=0)
+
+    target_file_path = f"/tmp/{timestamp}-{filename}.csv"
+    upload_path = f"{upload_to}/{timestamp}-{filename}.csv"
+
+    (
+        labels_data.loc[lambda df: df.label_quality.notna()].to_csv(
+            target_file_path, index=False
+        )
+    )
+
+    dbx.upload_file_to_dropbox(dbx_app, target_file_path, upload_path)
 
 
 def obstacle_labeller_page():
@@ -169,13 +173,17 @@ def obstacle_labeller_page():
 
     # Photo Switcher
     # --------------
+
+    # TODO: previous and next do not work:
+    #       you cannot simply add or subtract 1 from the roof_id
+
     buf, st_previous, st_random, st_next, buf = st.columns((3, 1, 1, 1, 3))
 
-    st_previous.button(
-        "⏪",
-        help="Go to the previous roof",
-        on_click=_load_previous_photo,
-    )
+    # st_previous.button(
+    #     "⏪",
+    #     help="Go to the previous roof",
+    #     on_click=_load_previous_photo,
+    # )
 
     st_random.button(
         "🔀",
@@ -184,11 +192,11 @@ def obstacle_labeller_page():
         args=(roofs_to_label,),
     )
 
-    st_next.button(
-        "⏩",
-        help="Go to the next roof",
-        on_click=_load_next_photo,
-    )
+    # st_next.button(
+    #     "⏩",
+    #     help="Go to the next roof",
+    #     on_click=_load_next_photo,
+    # )
 
     # Full Photo
     # ----------
@@ -210,5 +218,4 @@ def obstacle_labeller_page():
             st.dataframe(label_quality_data)
 
     if st_save.button("Save labels", help="Save the labels vetted so far to Dropbox"):
-        # save_labels_to_dropbox(photo_label_quality)
-        pass
+        _save_labels_to_dropbox(label_quality_data)
