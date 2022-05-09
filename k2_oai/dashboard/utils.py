@@ -28,49 +28,52 @@ def dbx_get_connection():
 
 
 @st.cache
-def dbx_get_metadata(file_format: str = "parquet", dropbox_app=None):
+def dbx_list_dir_contents(folder_name, dropbox_app=None):
+    dbx_app = dbx_get_connection() if dropbox_app is None else dropbox_app
+    return dbx.list_content_of(dbx_app, folder_name)
 
+
+@st.cache
+def dbx_load_dataframe(filename, root_path, dropbox_app=None):
+    dbx_app = dbx_get_connection() if dropbox_app is None else dropbox_app
+
+    dbx_app.files_download_to_file(f"/tmp/{filename}", f"{root_path}/{filename}")
+
+    if filename.endswith(".parquet"):
+        data = pd.read_parquet(f"/tmp/{filename}")
+    elif filename.endswith(".csv"):
+        data = pd.read_csv(f"/tmp/{filename}")
+    else:
+        raise ValueError("File must be either .parquet or .csv")
+
+    if os.path.exists(f"/tmp/{filename}"):
+        os.remove(f"/tmp/{filename}")
+
+    return data
+
+
+@st.cache
+def dbx_get_metadata(file_format: str = "parquet", dropbox_app=None):
     if file_format not in ["parquet", "csv"]:
         raise ValueError("file_format must be either 'parquet' or 'csv'")
 
     dbx_app = dbx_get_connection() if dropbox_app is None else dropbox_app
 
-    if file_format == "parquet":
-        dbx_app.files_download_to_file(
-            "join-roofs_images_obstacles.parquet",
-            "/k2/metadata/transformed_data/join-roofs_images_obstacles.parquet",
-        )
-        metadata = pd.read_parquet("join-roofs_images_obstacles.parquet")
-
-        if os.path.exists("join-roofs_images_obstacles.parquet"):
-            os.remove("join-roofs_images_obstacles.parquet")
-
-        return metadata
-
-    dbx_app.files_download_to_file(
-        "join-roofs_images_obstacles.csv",
-        "/k2/metadata/raw_data/inner_join-roofs_images_obstacles.csv",
+    return dbx_load_dataframe(
+        f"join-roofs_images_obstacles.{file_format}",
+        root_path="/k2/metadata/transformed_data",
+        dropbox_app=dbx_app,
     )
-    metadata = pd.read_csv("join-roofs_images_obstacles.csv")
-
-    if os.path.exists("join-roofs_images_obstacles.csv"):
-        os.remove("join-roofs_images_obstacles.csv")
-
-    return metadata
 
 
 @st.cache
-def dbx_get_photos_list(folder_name, dropbox_app=None):
-    dbx_app = dbx_get_connection() if dropbox_app is None else dropbox_app
-    return dbx.list_content_of(dbx_app, f"/k2/raw_photos/{folder_name}")
+def dbx_get_photos_and_metadata(photos_folder, photos_root_path):
 
-
-@st.cache
-def dbx_get_photos_and_metadata(folder_name):
+    full_path = f"{photos_root_path}/{photos_folder}"
 
     dbx_app = dbx_get_connection()
 
-    photos_list = dbx_get_photos_list(folder_name=folder_name, dropbox_app=dbx_app)
+    photos_list = dbx_list_dir_contents(folder_name=full_path, dropbox_app=dbx_app)
 
     photos_metadata = dbx_get_metadata(dropbox_app=dbx_app)
 

@@ -10,6 +10,9 @@ import streamlit as st
 from k2_oai.dashboard import utils
 from k2_oai.io import dropbox as dbx
 
+_DBX_PHOTOS_PATH = "/k2/raw_photos"
+_DBX_LABELS_PATH = "/k2/metadata/transformed_data"
+
 
 def _load_random_photo(roofs_list=None):
     if roofs_list is None:
@@ -37,27 +40,33 @@ def _load_next_photo():
 
 def _save_labels_to_dropbox(
     labels_data=None,
-    filename="roof-obstacles_labels_quality",
-    upload_to="/k2/metadata/transformed_data",
+    export_filename="obstacles-labels_quality",
+    dbx_root_path=None,
+    to_temp: bool = True,
 ):
+
+    dbx_root_path = dbx_root_path or _DBX_LABELS_PATH
+
+    dbx_app = utils.dbx_get_connection()
 
     if labels_data is None:
         labels_data = st.session_state["label_quality_data"]
 
-    dbx_app = utils.dbx_get_connection()
+    data_to_export = labels_data.loc[lambda df: df.label_quality.notna()]
 
-    timestamp = datetime.now().replace(microsecond=0)
+    if to_temp:
+        timestamp = datetime.now().replace(microsecond=0).strftime("%Y_%m_%d-%H_%M_%S")
+        filename = f"{timestamp}-{export_filename}.csv"
+    else:
+        filename = f"{export_filename}.csv"
 
-    target_file_path = f"/tmp/{timestamp}-{filename}.csv"
-    upload_path = f"{upload_to}/{timestamp}-{filename}.csv"
+    upload_path = f"{dbx_root_path}/{filename}"
 
-    (
-        labels_data.loc[lambda df: df.label_quality.notna()].to_csv(
-            target_file_path, index=False
-        )
+    data_to_export.to_csv(f"/tmp/{filename}", index=False)
+
+    dbx.upload_file_to_dropbox(
+        dbx_app, file_path_from=f"/tmp/{filename}", file_path_to=upload_path
     )
-
-    dbx.upload_file_to_dropbox(dbx_app, target_file_path, upload_path)
 
 
 def obstacle_labeller_page():
@@ -73,18 +82,21 @@ def obstacle_labeller_page():
     # +------------------------------+
 
     with st.sidebar:
+
         st.subheader("Data Source")
+
+        # get options for `chosen_folder`
+        photos_folders = utils.dbx_list_dir_contents(_DBX_PHOTOS_PATH).item_name
 
         chosen_folder = st.selectbox(
             "Select the folder to load the photos from: ",
-            options=[
-                "small_photos-api_upload",
-            ]
-            + [f"large_photos-{i}K_{i+5}K-api_upload" for i in range(0, 10, 5)],
+            options=photos_folders,
+            index=3,
         )
 
         photos_metadata, dbx_photo_list = utils.dbx_get_photos_and_metadata(
-            chosen_folder
+            photos_folder=chosen_folder,
+            photos_root_path=_DBX_PHOTOS_PATH,
         )
 
         st.info(f"Available photos: {dbx_photo_list.shape[0]}")
@@ -229,5 +241,5 @@ def obstacle_labeller_page():
         with st.expander("View the label quality dataset:"):
             st.dataframe(label_quality_data.dropna(subset="label_quality"))
 
-    if st_save.button("Save labels", help="Save the labels vetted so far to Dropbox"):
+    if st_save.button("💾", help="Save the labels vetted so far to Dropbox"):
         _save_labels_to_dropbox()

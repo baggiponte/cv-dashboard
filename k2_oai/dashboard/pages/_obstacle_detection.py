@@ -7,6 +7,9 @@ import streamlit as st
 from k2_oai.dashboard import utils
 from k2_oai.io import dropbox as dbx
 
+_DBX_PHOTOS_PATH = "/k2/raw_photos"
+_DBX_LABELS_PATH = "/k2/metadata/transformed_data"
+
 
 def _load_random_photo(roofs_list):
     st.session_state["roof_id_selector"] = np.random.choice(roofs_list.roof_id)
@@ -59,7 +62,7 @@ def _record_hyperparams(
 
 def _save_data_to_dropbox(
     hyperparams_data=None,
-    filename="roofs-obstacles_hyperparameters.csv",
+    filename="obstacle_detection_hyperparameters.csv",
     upload_to="/k2/hyperparameters",
 ):
 
@@ -68,7 +71,7 @@ def _save_data_to_dropbox(
 
     dbx_app = utils.dbx_get_connection()
 
-    timestamp = datetime.now().replace(microsecond=0)
+    timestamp = datetime.now().replace(microsecond=0).strftime("%Y_%m_%d-%H_%M_%S")
 
     target_file_path = f"/tmp/{timestamp}-{filename}.csv"
     upload_path = f"{upload_to}/{timestamp}-{filename}.csv"
@@ -94,16 +97,18 @@ def obstacle_detection_page():
 
         st.subheader("Data Source")
 
+        # get options for `chosen_folder`
+        photos_folders = utils.dbx_list_dir_contents(_DBX_PHOTOS_PATH).item_name
+
         chosen_folder = st.selectbox(
             "Select the folder to load the photos from: ",
-            options=[
-                "small_photos-api_upload",
-            ]
-            + [f"large_photos-{i}K_{i+5}K-api_upload" for i in range(0, 10, 5)],
+            options=photos_folders,
+            index=3,
         )
 
         photos_metadata, dbx_photo_list = utils.dbx_get_photos_and_metadata(
-            chosen_folder
+            photos_folder=chosen_folder,
+            photos_root_path=_DBX_PHOTOS_PATH,
         )
 
         st.info(f"Available photos: {dbx_photo_list.shape[0]}")
@@ -375,5 +380,5 @@ def obstacle_detection_page():
                 )
             )
 
-    if st_save.button("Save labels", help="Save the labels vetted so far to Dropbox"):
+    if st_save.button("💾", help="Save the labels vetted so far to Dropbox"):
         _save_data_to_dropbox(obstacles_hyperparameters)
