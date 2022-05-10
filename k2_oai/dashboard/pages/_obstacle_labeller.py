@@ -30,14 +30,6 @@ def _mark_photo(mark: str, roof_id=None, label_data=None):
     label_data.loc[label_data["roof_id"] == roof_id, "label_quality"] = mark
 
 
-def _load_previous_photo():
-    st.session_state["roof_id_selector"] -= 1
-
-
-def _load_next_photo():
-    st.session_state["roof_id_selector"] += 1
-
-
 def _save_labels_to_dropbox(
     labels_data=None,
     export_filename="obstacles-labels_quality",
@@ -74,7 +66,7 @@ def obstacle_labeller_page():
     st.write(
         "Choose a roof id to see the labels that have been assigned to it",
         "then use the buttons provided below to mark the label as good (`Y`),",
-        "bad (`N`) or maybe (`M`).",
+        "bad (`N`) or to be improved (`M`).",
     )
 
     # +------------------------------+
@@ -159,25 +151,35 @@ def obstacle_labeller_page():
     # | Labelling Actions |
     # +-------------------+
 
-    buf, st_keep, st_drop, st_maybe, buf = st.columns((2, 1, 1, 1, 2))
+    st_count, st_randomizer, buf, st_keep, st_drop, st_maybe, buf = st.columns(
+        (1, 1, 0.5, 1, 1, 1, 0.5)
+    )
 
+    st_count.text(f"ID: {chosen_roof_id!r}")
+
+    st_randomizer.button(
+        "🔀",
+        help="Go to a random roof",
+        on_click=_load_random_photo,
+        args=(roofs_to_label,),
+    )
     st_keep.button(
-        "Keep label",
+        "Yes",
         help="Mark the label as good",
         on_click=_mark_photo,
         args=("Y",),
     )
 
     st_drop.button(
-        "Drop label",
+        "No",
         help="Mark the label as bad",
         on_click=_mark_photo,
         args=("N",),
     )
 
     st_maybe.button(
-        "Maybe",
-        help="Do not mark the label and move on",
+        "To improve",
+        help="The label will become good after improvements",
         on_click=_mark_photo,
         args=("M",),
     )
@@ -186,45 +188,17 @@ def obstacle_labeller_page():
     # | Plot the roof |
     # +---------------+
 
-    # Roof Only
-    # ---------
-    st.image(
-        bgr_roof,
-        use_column_width=True,
-        channels="BGRA",
-        caption="Roof with database labels",
-    )
+    st_roof_photo, st_full_photo = st.columns(2)
 
-    # Photo Switcher
-    # --------------
+    with st_roof_photo:
+        st.image(
+            bgr_roof,
+            use_column_width=True,
+            channels="BGRA",
+            caption="Roof with database labels",
+        )
 
-    # TODO: previous and next do not work:
-    #       you cannot simply add or subtract 1 from the roof_id
-
-    buf, st_previous, st_random, st_next, buf = st.columns((3, 1, 1, 1, 3))
-
-    # st_previous.button(
-    #     "⏪",
-    #     help="Go to the previous roof",
-    #     on_click=_load_previous_photo,
-    # )
-
-    st_random.button(
-        "🔀",
-        help="Go to a random roof",
-        on_click=_load_random_photo,
-        args=(roofs_to_label,),
-    )
-
-    # st_next.button(
-    #     "⏩",
-    #     help="Go to the next roof",
-    #     on_click=_load_next_photo,
-    # )
-
-    # Full Photo
-    # ----------
-    with st.expander("View the original photo in full"):
+    with st_full_photo:
         st.image(
             k2_labelled_image,
             use_column_width=True,
@@ -238,7 +212,10 @@ def obstacle_labeller_page():
     st_data, st_save = st.columns((6, 1))
 
     with st_data:
-        with st.expander("View the label quality dataset:"):
+        with st.expander("View the label quality dataset:", expanded=True):
+            st.write(
+                f"Currently vetted {len(label_quality_data.dropna(subset='label_quality'))} roofs"  # noqa E501
+            )
             st.dataframe(label_quality_data.dropna(subset="label_quality"))
 
     if st_save.button("💾", help="Save the labels vetted so far to Dropbox"):
