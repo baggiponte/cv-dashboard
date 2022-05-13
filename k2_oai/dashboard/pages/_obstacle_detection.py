@@ -92,6 +92,11 @@ def obstacle_detection_page():
     # +-------------------------------------+
 
     st.title(":house_with_garden: Obstacle Detection Dashboard")
+    st.write(
+        "Explore the results of the obstacle detection algorithm,",
+        "and adjust the hyperparameters to improve the results.",
+        "You can also save hyperparametres you chose to a Dropbox file.",
+    )
 
     with st.sidebar:
 
@@ -106,7 +111,7 @@ def obstacle_detection_page():
             index=3,
         )
 
-        photos_metadata, dbx_photo_list = utils.dbx_get_photos_and_metadata(
+        photos_metadata, dbx_photo_list = utils.dbx_get_photo_list_and_metadata(
             photos_folder=chosen_folder,
             photos_root_path=_DBX_PHOTOS_PATH,
         )
@@ -131,7 +136,7 @@ def obstacle_detection_page():
             .drop_duplicates("roof_id")
             .sort_values("roof_id")
             .assign(
-                label_quality=np.NaN,
+                # label_quality=np.NaN,
                 sigma=np.NaN,
                 filtering_method=np.NaN,
                 binarization_method=np.NaN,
@@ -159,7 +164,7 @@ def obstacle_detection_page():
 
         # roof ID randomizer
         # ------------------
-        st.write("You can choose a roof ID randomly...")
+        st.write("Choose a roof ID randomly...")
 
         buf, st_rand, buf = st.columns((2, 1, 2))
 
@@ -167,7 +172,7 @@ def obstacle_detection_page():
 
         # roof ID selector
         # ----------------
-        st.write("...or choose it manually:")
+        st.write("...or manually:")
         chosen_roof_id = st.selectbox(
             "Roof identifier:",
             options=roofs_to_label,
@@ -339,32 +344,32 @@ def obstacle_detection_page():
         caption=f"Auto Labelled {chosen_drawing_technique}",
     )
 
-    # +-------------------+
-    # | Labelling Actions |
-    # +-------------------+
-
-    buf, st_keep, st_drop, st_maybe, buf = st.columns((2, 1, 1, 1, 2))
-
-    st_keep.button(
-        "Keep label",
-        help="Mark the label as good",
-        on_click=_mark_photo,
-        args=("Y",),
-    )
-
-    st_drop.button(
-        "Drop label",
-        help="Mark the label as bad",
-        on_click=_mark_photo,
-        args=("N",),
-    )
-
-    st_maybe.button(
-        "Maybe",
-        help="Do not mark the label and move on",
-        on_click=_mark_photo,
-        args=("M",),
-    )
+    # # +-------------------+
+    # # | Labelling Actions |
+    # # +-------------------+
+    #
+    # buf, st_keep, st_drop, st_maybe, buf = st.columns((2, 1, 1, 1, 2))
+    #
+    # st_keep.button(
+    #     "Keep label",
+    #     help="Mark the label as good",
+    #     on_click=_mark_photo,
+    #     args=("Y",),
+    # )
+    #
+    # st_drop.button(
+    #     "Drop label",
+    #     help="Mark the label as bad",
+    #     on_click=_mark_photo,
+    #     args=("N",),
+    # )
+    #
+    # st_maybe.button(
+    #     "Maybe",
+    #     help="Do not mark the label and move on",
+    #     on_click=_mark_photo,
+    #     args=("M",),
+    # )
 
     # +----------------------+
     # | Hyperparameters Data |
@@ -376,7 +381,9 @@ def obstacle_detection_page():
         with st.expander("View stored hyperparameters"):
             st.dataframe(
                 obstacles_hyperparameters.dropna(
-                    subset=["label_quality", "sigma"], how="all"
+                    # subset=["label_quality", "sigma"],
+                    subset=["sigma"],
+                    how="all",
                 )
             )
 

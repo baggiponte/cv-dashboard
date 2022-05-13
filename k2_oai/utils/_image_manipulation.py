@@ -79,7 +79,7 @@ def pad_image(
 def draw_boundaries(
     input_image: ndarray,
     roof_coordinates: str | ndarray,
-    obstacle_coordinates: str | ndarray | list[str] | list[ndarray] | None = None,
+    obstacle_coordinates: str | list[str] | None,
 ) -> ndarray:
     """Draws roof and obstacle labels on the input image from their coordinates.
 
@@ -100,6 +100,9 @@ def draw_boundaries(
 
     points: np.array = parse_str_as_coordinates(roof_coordinates).reshape((-1, 1, 2))
     result: np.ndarray = cv.polylines(input_image, [points], True, (0, 0, 255), 2)
+
+    if obstacle_coordinates is None:
+        return result
 
     for obst in obstacle_coordinates:
         points: np.array = parse_str_as_coordinates(obst).reshape((-1, 1, 2))

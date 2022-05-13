@@ -1,2 +1,3 @@
+from ._metadata_explorer import metadata_explorer_page
 from ._obstacle_detection import obstacle_detection_page
 from ._obstacle_labeller import obstacle_labeller_page

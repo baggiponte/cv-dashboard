@@ -86,7 +86,7 @@ def obstacle_labeller_page():
             index=3,
         )
 
-        photos_metadata, dbx_photo_list = utils.dbx_get_photos_and_metadata(
+        photos_metadata, dbx_photo_list = utils.dbx_get_photo_list_and_metadata(
             photos_folder=chosen_folder,
             photos_root_path=_DBX_PHOTOS_PATH,
         )
@@ -125,7 +125,8 @@ def obstacle_labeller_page():
 
         # roof ID randomizer
         # ------------------
-        st.write("You can choose a roof ID randomly...")
+
+        st.write("Choose a roof ID randomly...")
 
         buf, st_rand, buf = st.columns((2, 1, 2))
 
@@ -133,7 +134,7 @@ def obstacle_labeller_page():
 
         # roof ID selector
         # ----------------
-        st.write("...or choose it manually:")
+        st.write("...or manually:")
         chosen_roof_id = st.selectbox(
             "Roof identifier:",
             options=roofs_to_label,
@@ -155,7 +156,7 @@ def obstacle_labeller_page():
         (1, 1, 0.5, 1, 1, 1, 0.5)
     )
 
-    st_count.text(f"ID: {chosen_roof_id!r}")
+    st_count.markdown(f"Roof ID: `{chosen_roof_id}`")
 
     st_randomizer.button(
         "🔀",
@@ -213,10 +214,11 @@ def obstacle_labeller_page():
 
     with st_data:
         with st.expander("View the label quality dataset:", expanded=True):
-            st.write(
-                f"Currently vetted {len(label_quality_data.dropna(subset='label_quality'))} roofs"  # noqa E501
-            )
             st.dataframe(label_quality_data.dropna(subset="label_quality"))
 
-    if st_save.button("💾", help="Save the labels vetted so far to Dropbox"):
-        _save_labels_to_dropbox()
+    with st_save:
+        st.info(
+            f"Currently vetted {len(label_quality_data.dropna(subset='label_quality'))} roofs"  # noqa E50
+        )
+        if st.button("💾", help="Save the labels vetted so far to Dropbox"):
+            _save_labels_to_dropbox()

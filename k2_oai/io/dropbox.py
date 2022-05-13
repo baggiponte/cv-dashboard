@@ -2,7 +2,6 @@ import os
 
 import dropbox
 import pandas as pd
-import streamlit as st
 from dotenv import load_dotenv
 from dropbox.exceptions import AuthError
 
@@ -27,49 +26,18 @@ def dropbox_oauth2_connect(
     authorization_url = dropbox_oauth2_flow.start()
 
     print(
-        f"""
-        1. Go to: {authorization_url}
-        2. Click "Allow" (you might have to log in first)
-        3. Copy the authorization code.
-        """
+        f" 1. Go to: {authorization_url}\n",
+        '2. Click "Allow" (you might have to log in first)\n',
+        "3. Copy the authorization code\n",
+        "4. Enter the authorization code here:",
     )
-    authorization_code = input("4. Enter the authorization code here: ")
+    authorization_code = input()
 
     try:
         return dropbox_oauth2_flow.finish(authorization_code)
     except:  # noqa: E722
         print("Invalid authorization code!")
         return None
-
-
-def st_dropbox_oauth2_connect(
-    dbx_app_key=DROPBOX_APP_KEY, dbx_app_secret=DROPBOX_APP_SECRET
-):
-    dropbox_oauth_flow = dropbox.DropboxOAuth2FlowNoRedirect(
-        dbx_app_key,
-        dbx_app_secret,
-        token_access_type="offline",
-    )
-
-    authorization_url = dropbox_oauth_flow.start()
-
-    placeholder = st.empty()
-
-    with placeholder.container():
-        st.title(":key: Dropbox Authentication")
-        st.markdown(f"1. Go to [this url]({authorization_url}).")
-        st.write('2. Click "Allow" (you might have to log in first).')
-        st.write("3. Copy the authorization code.")
-        st.write("4. Enter the authorization code here: ")
-        authorization_code = st.text_input("")
-
-    try:
-        complete_oauth_flow = dropbox_oauth_flow.finish(authorization_code)
-        return placeholder, complete_oauth_flow
-    except:  # noqa: E722
-        if authorization_code is not None and len(authorization_code):
-            st.error("Invalid authorization code!")
-        return placeholder, None
 
 
 def _get_team_member_id(dbx_team_app, dbx_user_email):

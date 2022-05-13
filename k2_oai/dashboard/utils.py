@@ -3,9 +3,10 @@ from __future__ import annotations
 import os
 
 import cv2 as cv
-import numpy as np
+import dropbox
 import pandas as pd
 import streamlit as st
+from dotenv import load_dotenv
 
 from k2_oai.io import dropbox as dbx
 from k2_oai.obstacle_detection import (
@@ -15,6 +16,45 @@ from k2_oai.obstacle_detection import (
     morphological_opening_step,
 )
 from k2_oai.utils import draw_boundaries, rotate_and_crop_roof
+
+load_dotenv()
+
+DROPBOX_NAMESPACE_ID = os.environ.get("DROPBOX_NAMESPACE_ID")
+DROPBOX_USER_EMAIL = os.environ.get("DROPBOX_USER_MAIL")
+DROPBOX_APP_KEY = os.environ.get("APP_KEY")
+DROPBOX_APP_SECRET = os.environ.get("APP_SECRET")
+if "DROPBOX_ACCESS_TOKEN" in os.environ:
+    DROPBOX_ACCESS_TOKEN = os.environ.get("DROPBOX_ACCESS_TOKEN")
+
+
+def st_dropbox_oauth2_connect(
+    dbx_app_key=DROPBOX_APP_KEY, dbx_app_secret=DROPBOX_APP_SECRET
+):
+    dropbox_oauth_flow = dropbox.DropboxOAuth2FlowNoRedirect(
+        dbx_app_key,
+        dbx_app_secret,
+        token_access_type="offline",
+    )
+
+    authorization_url = dropbox_oauth_flow.start()
+
+    placeholder = st.empty()
+
+    with placeholder.container():
+        st.title(":key: Dropbox Authentication")
+        st.markdown(f"1. Go to [this url]({authorization_url}).")
+        st.write('2. Click "Allow" (you might have to log in first).')
+        st.write("3. Copy the authorization code.")
+        st.write("4. Enter the authorization code here: ")
+        authorization_code = st.text_input("")
+
+    try:
+        complete_oauth_flow = dropbox_oauth_flow.finish(authorization_code)
+        return placeholder, complete_oauth_flow
+    except:  # noqa: E722
+        if authorization_code is not None and len(authorization_code):
+            st.error("Invalid authorization code!")
+        return placeholder, None
 
 
 @st.cache(allow_output_mutation=True)
@@ -67,7 +107,7 @@ def dbx_get_metadata(file_format: str = "parquet", dropbox_app=None):
 
 
 @st.cache
-def dbx_get_photos_and_metadata(photos_folder, photos_root_path):
+def dbx_get_photo_list_and_metadata(photos_folder, photos_root_path):
 
     full_path = f"{photos_root_path}/{photos_folder}"
 
@@ -91,8 +131,8 @@ def dbx_load_photo(folder_name, photo_name, dropbox_app=None):
         photo_name, f"/k2/raw_photos/{folder_name}/{photo_name}"
     )
 
-    bgr_image: np.ndarray = cv.imread(photo_name, 1)
-    greyscale_image: np.ndarray = cv.imread(photo_name, 0)
+    bgr_image = cv.imread(photo_name, 1)
+    greyscale_image = cv.imread(photo_name, 0)
 
     if os.path.exists(photo_name):
         os.remove(photo_name)
@@ -100,7 +140,7 @@ def dbx_load_photo(folder_name, photo_name, dropbox_app=None):
     return bgr_image, greyscale_image
 
 
-def get_coordinates_from_roof_id(roof_id, photos_metadata):
+def get_coordinates_from_roof_id(roof_id, photos_metadata) -> tuple[str, list[str]]:
 
     roof_px_coordinates = photos_metadata.loc[
         photos_metadata.roof_id == roof_id, "pixelCoordinates_roof"

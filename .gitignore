@@ -1,9 +1,3 @@
-# +------------------+
-# | WORK IN PROGRESS |
-# +------------------+
-
-**/wip-*
-
 # +------+
 # | DATA |
 # +------+
@@ -16,16 +10,7 @@
 *.png
 *.sql
 
-k2_oai/image_segmentation/data
-inner_join-roofs_images_obstacles.csv
-temp_notebook.ipynb
-
-# +--------------+
-# | PRIVATE DIRS |
-# +--------------+
-
-k2-dropbox
-k2_oai/notebooks/results
+notebooks/
 
 # +------------+
 # | SYSTEM DIR |
