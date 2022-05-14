@@ -15,6 +15,8 @@ from k2_oai.obstacle_detection import (
 )
 from k2_oai.utils import rotate_and_crop_roof
 
+__all__ = ["obstacle_detection_pipeline"]
+
 
 def obstacle_detection_pipeline(
     satellite_image: ndarray,

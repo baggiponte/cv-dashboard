@@ -12,6 +12,13 @@ from numpy.core.multiarray import ndarray
 
 from k2_oai.utils._parsers import parse_str_as_coordinates
 
+__all__ = [
+    "read_image_from_bytestring",
+    "pad_image",
+    "draw_boundaries",
+    "rotate_and_crop_roof",
+]
+
 
 def read_image_from_bytestring(
     bytestring_image: bytes,

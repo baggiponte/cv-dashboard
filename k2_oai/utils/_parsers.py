@@ -10,6 +10,10 @@ from ast import literal_eval
 import numpy as np
 from numpy.core.multiarray import ndarray
 
+__all__ = [
+    "parse_str_as_coordinates",
+]
+
 
 def parse_str_as_coordinates(
     string: str, dtype=np.int32, sort_coordinates: bool = False

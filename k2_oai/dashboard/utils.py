@@ -1,14 +1,20 @@
+"""
+Common utilities for dashboard mode pages.
+"""
+
 from __future__ import annotations
 
 import os
+from datetime import datetime
 
-import cv2 as cv
 import dropbox
-import pandas as pd
+import numpy as np
 import streamlit as st
 from dotenv import load_dotenv
 
+from k2_oai.io import data_loader
 from k2_oai.io import dropbox as dbx
+from k2_oai.io.dropbox_paths import DROPBOX_RAW_PHOTOS_ROOT
 from k2_oai.obstacle_detection import (
     binarization_step,
     detect_obstacles,
@@ -19,20 +25,31 @@ from k2_oai.utils import draw_boundaries, rotate_and_crop_roof
 
 load_dotenv()
 
-DROPBOX_NAMESPACE_ID = os.environ.get("DROPBOX_NAMESPACE_ID")
-DROPBOX_USER_EMAIL = os.environ.get("DROPBOX_USER_MAIL")
-DROPBOX_APP_KEY = os.environ.get("APP_KEY")
-DROPBOX_APP_SECRET = os.environ.get("APP_SECRET")
+_DROPBOX_NAMESPACE_ID = os.environ.get("DROPBOX_NAMESPACE_ID")
+_DROPBOX_USER_EMAIL = os.environ.get("DROPBOX_USER_MAIL")
+_DROPBOX_APP_KEY = os.environ.get("APP_KEY")
+_DROPBOX_APP_SECRET = os.environ.get("APP_SECRET")
 if "DROPBOX_ACCESS_TOKEN" in os.environ:
-    DROPBOX_ACCESS_TOKEN = os.environ.get("DROPBOX_ACCESS_TOKEN")
+    _DROPBOX_ACCESS_TOKEN = os.environ.get("DROPBOX_ACCESS_TOKEN")
+
+__all__ = [
+    "st_dropbox_oauth2_connect",
+    "st_dropbox_connect",
+    "st_list_contents_of",
+    "st_load_dataframe",
+    "st_load_metadata",
+    "st_load_geo_metadata",
+    "st_load_annotations_data",
+    "load_random_photo",
+]
 
 
 def st_dropbox_oauth2_connect(
-    dbx_app_key=DROPBOX_APP_KEY, dbx_app_secret=DROPBOX_APP_SECRET
+    dropbox_app_key=_DROPBOX_APP_KEY, dropbox_app_secret=_DROPBOX_APP_SECRET
 ):
     dropbox_oauth_flow = dropbox.DropboxOAuth2FlowNoRedirect(
-        dbx_app_key,
-        dbx_app_secret,
+        dropbox_app_key,
+        dropbox_app_secret,
         token_access_type="offline",
     )
 
@@ -58,64 +75,53 @@ def st_dropbox_oauth2_connect(
 
 
 @st.cache(allow_output_mutation=True)
-def dbx_get_connection():
+def st_dropbox_connect():
     if "DROPBOX_ACCESS_TOKEN" in os.environ:
         return dbx.dropbox_connect_access_token_only(st.session_state["access_token"])
-    else:
-        return dbx.dropbox_connect(
-            st.session_state["access_token"], st.session_state["refresh_token"]
-        )
-
-
-@st.cache
-def dbx_list_dir_contents(folder_name, dropbox_app=None):
-    dbx_app = dbx_get_connection() if dropbox_app is None else dropbox_app
-    return dbx.list_content_of(dbx_app, folder_name)
-
-
-@st.cache
-def dbx_load_dataframe(filename, root_path, dropbox_app=None):
-    dbx_app = dbx_get_connection() if dropbox_app is None else dropbox_app
-
-    dbx_app.files_download_to_file(f"/tmp/{filename}", f"{root_path}/{filename}")
-
-    if filename.endswith(".parquet"):
-        data = pd.read_parquet(f"/tmp/{filename}")
-    elif filename.endswith(".csv"):
-        data = pd.read_csv(f"/tmp/{filename}")
-    else:
-        raise ValueError("File must be either .parquet or .csv")
-
-    if os.path.exists(f"/tmp/{filename}"):
-        os.remove(f"/tmp/{filename}")
-
-    return data
-
-
-@st.cache
-def dbx_get_metadata(file_format: str = "parquet", dropbox_app=None):
-    if file_format not in ["parquet", "csv"]:
-        raise ValueError("file_format must be either 'parquet' or 'csv'")
-
-    dbx_app = dbx_get_connection() if dropbox_app is None else dropbox_app
-
-    return dbx_load_dataframe(
-        f"join-roofs_images_obstacles.{file_format}",
-        root_path="/k2/metadata/transformed_data",
-        dropbox_app=dbx_app,
+    return dbx.dropbox_connect(
+        st.session_state["access_token"], st.session_state["refresh_token"]
     )
 
 
 @st.cache
-def dbx_get_photo_list_and_metadata(photos_folder, photos_root_path):
+def st_list_contents_of(folder_name, dropbox_app=None):
+    dbx_app = dropbox_app or st_dropbox_connect()
+    return dbx.dropbox_list_contents_of(dbx_app, folder_name)
 
-    full_path = f"{photos_root_path}/{photos_folder}"
 
-    dbx_app = dbx_get_connection()
+@st.cache
+def st_load_dataframe(filename, dropbox_path, dropbox_app=None):
+    dbx_app = dropbox_app or st_dropbox_connect()
+    return data_loader.dbx_load_dataframe(filename, dropbox_path, dbx_app)
 
-    photos_list = dbx_list_dir_contents(folder_name=full_path, dropbox_app=dbx_app)
 
-    photos_metadata = dbx_get_metadata(dropbox_app=dbx_app)
+@st.cache
+def st_load_metadata(dropbox_app=None):
+    dbx_app = dropbox_app or st_dropbox_connect()
+    return data_loader.dbx_load_metadata(dbx_app)
+
+
+@st.cache
+def st_load_geo_metadata(dropbox_app=None):
+    dbx_app = dropbox_app or st_dropbox_connect()
+    return data_loader.dbx_load_geo_metadata(dbx_app)
+
+
+@st.cache
+def st_load_annotations_data(dropbox_app=None, update_annotations=False):
+    dbx_app = dropbox_app or st_dropbox_connect()
+    return data_loader.dbx_load_annotations_data(dbx_app, update_annotations)
+
+
+@st.cache
+def st_load_photo_list_and_metadata(photos_folder, photos_root_path, dropbox_app=None):
+    photos_path = f"{photos_root_path or DROPBOX_RAW_PHOTOS_ROOT}/{photos_folder}"
+
+    dbx_app = dropbox_app or st_dropbox_connect()
+
+    photos_list = st_list_contents_of(folder_name=photos_path, dropbox_app=dbx_app)
+
+    photos_metadata = st_load_metadata(dropbox_app=dbx_app)
 
     available_photos_metadata = photos_metadata[
         photos_metadata.imageURL.isin(photos_list.item_name.values)
@@ -125,19 +131,27 @@ def dbx_get_photo_list_and_metadata(photos_folder, photos_root_path):
 
 
 @st.cache(allow_output_mutation=True)
-def dbx_load_photo(folder_name, photo_name, dropbox_app=None):
-    dbx_app = dbx_get_connection() if dropbox_app is None else dropbox_app
-    dbx_app.files_download_to_file(
-        photo_name, f"/k2/raw_photos/{folder_name}/{photo_name}"
+def st_load_photo(
+    photo_name,
+    folder_name,
+    dropbox_app=None,
+    greyscale_only: bool = False,
+):
+    dbx_app = dropbox_app or st_dropbox_connect()
+    dbx_path = f"{DROPBOX_RAW_PHOTOS_ROOT}/{folder_name}"
+    return data_loader.dbx_load_photo(photo_name, dbx_path, dbx_app, greyscale_only)
+
+
+@st.cache
+def st_load_photos_from_roof_id(
+    roof_id, photos_metadata, chosen_folder, dropbox_app=None, greyscale_only=False
+):
+    dbx_app = dropbox_app or st_dropbox_connect()
+    dbx_path = f"{DROPBOX_RAW_PHOTOS_ROOT}/{chosen_folder}"
+
+    return data_loader.dbx_load_photos_from_roof_id(
+        roof_id, photos_metadata, dbx_path, dbx_app, greyscale_only
     )
-
-    bgr_image = cv.imread(photo_name, 1)
-    greyscale_image = cv.imread(photo_name, 0)
-
-    if os.path.exists(photo_name):
-        os.remove(photo_name)
-
-    return bgr_image, greyscale_image
 
 
 def get_coordinates_from_roof_id(roof_id, photos_metadata) -> tuple[str, list[str]]:
@@ -156,21 +170,25 @@ def get_coordinates_from_roof_id(roof_id, photos_metadata) -> tuple[str, list[st
     return roof_px_coordinates, obstacles_px_coordinates
 
 
-def load_photos_from_roof_id(roof_id, photos_metadata, chosen_folder):
-    photo_name = photos_metadata.loc[
-        lambda df: df["roof_id"] == roof_id, "imageURL"
-    ].values[0]
-
-    return dbx_load_photo(chosen_folder, photo_name)
-
-
-def crop_roofs_from_roof_id(roof_id, photos_metadata, chosen_folder):
+def load_and_crop_roof_from_roof_id(
+    roof_id,
+    photos_metadata,
+    dropbox_path,
+    dropbox_app=None,
+    greyscale_only: bool = False,
+):
     roof_px_coord, obstacles_px_coord = get_coordinates_from_roof_id(
         roof_id, photos_metadata
     )
 
-    bgr_image, greyscale_image = load_photos_from_roof_id(
-        roof_id, photos_metadata, chosen_folder
+    if greyscale_only:
+        greyscale_image = st_load_photos_from_roof_id(
+            roof_id, photos_metadata, dropbox_path, dropbox_app, greyscale_only
+        )
+        return rotate_and_crop_roof(greyscale_image, roof_px_coord)
+
+    bgr_image, greyscale_image = st_load_photos_from_roof_id(
+        roof_id, photos_metadata, dropbox_path, dropbox_app
     )
 
     k2_labelled_image = draw_boundaries(bgr_image, roof_px_coord, obstacles_px_coord)
@@ -218,3 +236,23 @@ def obstacle_detection_pipeline(
     if return_filtered_roof:
         return blobs, roof_with_bboxes, obstacles_coordinates, filtered_roof
     return blobs, roof_with_bboxes, obstacles_coordinates
+
+
+def load_random_photo(roofs_list):
+    st.session_state["roof_id_selector"] = np.random.choice(roofs_list.roof_id)
+
+
+def save_annotations_to_dropbox(data_to_upload, filename, destination_folder):
+
+    dbx_app = st_dropbox_connect()
+
+    timestamp = datetime.now().replace(microsecond=0).strftime("%Y_%m_%d-%H_%M_%S")
+
+    file_to_upload = f"/tmp/{timestamp}-{filename}.csv"
+    destination_path = f"{destination_folder}/{timestamp}-{filename}.csv"
+
+    data_to_upload.dropna(subset="label_annotations").to_csv(
+        file_to_upload, index=False
+    )
+
+    dbx.dropbox_upload_file_to(dbx_app, file_to_upload, destination_path)

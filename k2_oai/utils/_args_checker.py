@@ -2,6 +2,8 @@
 Auxiliary functions to check the validity of the input arguments.
 """
 
+__all__ = ["is_positive_odd_integer", "is_valid_method"]
+
 
 def is_positive_odd_integer(arg: int) -> bool:
     """Checks the argument is positive odd integer; else raises ValueError.

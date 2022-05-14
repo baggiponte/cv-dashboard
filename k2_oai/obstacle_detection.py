@@ -23,7 +23,7 @@ from numpy.core.multiarray import ndarray
 from k2_oai.utils import is_positive_odd_integer, is_valid_method, pad_image
 
 __all__: list[str] = [
-    "BoundingBox",
+    # "BoundingBox",
     "filtering_step",
     "binarization_step",
     "morphological_opening_step",

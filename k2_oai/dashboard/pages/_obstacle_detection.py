@@ -1,46 +1,31 @@
-from datetime import datetime
+"""
+Dashboard mode to explore the OpenCV pipeline for obstacle detection and annotate the
+hyperparameters of each photo
+"""
 
 import matplotlib.pyplot as plt
 import numpy as np
 import streamlit as st
 
 from k2_oai.dashboard import utils
-from k2_oai.io import dropbox as dbx
+from k2_oai.io.dropbox_paths import (
+    DROPBOX_HYPERPARAMETERS_PATH,
+    DROPBOX_RAW_PHOTOS_ROOT,
+)
 
-_DBX_PHOTOS_PATH = "/k2/raw_photos"
-_DBX_LABELS_PATH = "/k2/metadata/transformed_data"
-
-
-def _load_random_photo(roofs_list):
-    st.session_state["roof_id_selector"] = np.random.choice(roofs_list.roof_id)
+__all__ = ["obstacle_detection_page"]
 
 
-def _mark_photo(mark: str, roof_id=None, label_data=None):
-    if roof_id is None:
-        roof_id = st.session_state["roof_id_selector"]
-
-    if label_data is None:
-        label_data = st.session_state["obstacles_hyperparameters"]
-
-    label_data.loc[label_data["roof_id"] == roof_id, "label_quality"] = mark
-
-
-def _record_hyperparams(
+def annotate_hyperparameters(
+    roof_id,
+    label_data,
     sigma,
     filtering_method,
     binarization_method,
     bin_adaptive_kernel,
     bin_composite_tolerance,
     drawing_technique,
-    roof_id=None,
-    label_data=None,
 ):
-
-    if roof_id is None:
-        roof_id = st.session_state["roof_id_selector"]
-
-    if label_data is None:
-        label_data = st.session_state["obstacles_hyperparameters"]
 
     label_data.loc[lambda df: df.roof_id == roof_id, "sigma"] = sigma
     label_data.loc[
@@ -58,31 +43,6 @@ def _record_hyperparams(
     label_data.loc[
         lambda df: df.roof_id == roof_id, "drawing_technique"
     ] = drawing_technique
-
-
-def _save_data_to_dropbox(
-    hyperparams_data=None,
-    filename="obstacle_detection_hyperparameters.csv",
-    upload_to="/k2/hyperparameters",
-):
-
-    if hyperparams_data is None:
-        hyperparams_data = st.session_state["obstacles_hyperparameters"]
-
-    dbx_app = utils.dbx_get_connection()
-
-    timestamp = datetime.now().replace(microsecond=0).strftime("%Y_%m_%d-%H_%M_%S")
-
-    target_file_path = f"/tmp/{timestamp}-{filename}.csv"
-    upload_path = f"{upload_to}/{timestamp}-{filename}.csv"
-
-    (
-        hyperparams_data.dropna(subset=["sigma", "label_quality"], how="all").to_csv(
-            target_file_path, index=False
-        )
-    )
-
-    dbx.upload_file_to_dropbox(dbx_app, target_file_path, upload_path)
 
 
 def obstacle_detection_page():
@@ -103,7 +63,7 @@ def obstacle_detection_page():
         st.subheader("Data Source")
 
         # get options for `chosen_folder`
-        photos_folders = utils.dbx_list_dir_contents(_DBX_PHOTOS_PATH).item_name
+        photos_folders = utils.st_list_contents_of(DROPBOX_RAW_PHOTOS_ROOT).item_name
 
         chosen_folder = st.selectbox(
             "Select the folder to load the photos from: ",
@@ -111,9 +71,9 @@ def obstacle_detection_page():
             index=3,
         )
 
-        photos_metadata, dbx_photo_list = utils.dbx_get_photo_list_and_metadata(
+        photos_metadata, dbx_photo_list = utils.st_load_photo_list_and_metadata(
             photos_folder=chosen_folder,
-            photos_root_path=_DBX_PHOTOS_PATH,
+            photos_root_path=DROPBOX_RAW_PHOTOS_ROOT,
         )
 
         st.info(f"Available photos: {dbx_photo_list.shape[0]}")
@@ -136,7 +96,6 @@ def obstacle_detection_page():
             .drop_duplicates("roof_id")
             .sort_values("roof_id")
             .assign(
-                # label_quality=np.NaN,
                 sigma=np.NaN,
                 filtering_method=np.NaN,
                 binarization_method=np.NaN,
@@ -156,7 +115,7 @@ def obstacle_detection_page():
 
     # +----------------+
     # | Choose roof id |
-    # ++---------------+
+    # +----------------+
 
     with st.sidebar:
 
@@ -168,7 +127,7 @@ def obstacle_detection_page():
 
         buf, st_rand, buf = st.columns((2, 1, 2))
 
-        st_rand.button("🔀", on_click=_load_random_photo, args=(roofs_to_label,))
+        st_rand.button("🔀", on_click=utils.load_random_photo, args=(roofs_to_label,))
 
         # roof ID selector
         # ----------------
@@ -182,7 +141,7 @@ def obstacle_detection_page():
 
         st.markdown("---")
 
-    k2_labelled_image, bgr_roof, greyscale_roof = utils.crop_roofs_from_roof_id(
+    k2_labelled_image, bgr_roof, greyscale_roof = utils.load_and_crop_roof_from_roof_id(
         int(chosen_roof_id), photos_metadata, chosen_folder
     )
     # +-----------------------------+
@@ -200,7 +159,6 @@ def obstacle_detection_page():
         chosen_sigma = st.slider(
             "Insert sigma for filtering (positive, odd integer):",
             min_value=1,
-            max_value=151,
             step=2,
             key="sigma",
         )
@@ -244,8 +202,10 @@ def obstacle_detection_page():
         st_save_params.button(
             "💾",
             help="Record Hyperparameters",
-            on_click=_record_hyperparams,
+            on_click=annotate_hyperparameters,
             args=(
+                chosen_roof_id,
+                obstacles_hyperparameters,
                 chosen_sigma,
                 chosen_filtering_method,
                 chosen_binarisation_method,
@@ -289,6 +249,7 @@ def obstacle_detection_page():
     # RGB color histogram
     # -------------------
     fig, ax = plt.subplots(figsize=(3, 1))
+
     n, bins, patches = ax.hist(
         bgr_roof[:, :, 0].flatten(), bins=50, edgecolor="blue", alpha=0.5
     )
@@ -298,18 +259,23 @@ def obstacle_detection_page():
     n, bins, patches = ax.hist(
         bgr_roof[:, :, 2].flatten(), bins=50, edgecolor="red", alpha=0.5
     )
+
     ax.set_title("Cropped Roof RGB Histogram")
     ax.set_xlim(0, 255)
+
     st_histograms.pyplot(fig, use_column_width=True)
 
     # greyscale histogram
     # -------------------
     fig, ax = plt.subplots(figsize=(3, 1))
+
     n, bins, patches = ax.hist(
         filtered_gs_roof.flatten(), bins=range(256), edgecolor="black", alpha=0.9
     )
+
     ax.set_title("Roof Greyscale Histogram After Filtering")
     ax.set_xlim(0, 255)
+
     st_histograms.pyplot(fig, use_column_width=True)
 
     # +--------------------+
@@ -338,54 +304,22 @@ def obstacle_detection_page():
         use_column_width=True,
         caption="Auto Obstacle Blobs (Greyscale)",
     )
+
     st_results_widgets[1].image(
         roof_with_bboxes,
         use_column_width=True,
         caption=f"Auto Labelled {chosen_drawing_technique}",
     )
 
-    # # +-------------------+
-    # # | Labelling Actions |
-    # # +-------------------+
-    #
-    # buf, st_keep, st_drop, st_maybe, buf = st.columns((2, 1, 1, 1, 2))
-    #
-    # st_keep.button(
-    #     "Keep label",
-    #     help="Mark the label as good",
-    #     on_click=_mark_photo,
-    #     args=("Y",),
-    # )
-    #
-    # st_drop.button(
-    #     "Drop label",
-    #     help="Mark the label as bad",
-    #     on_click=_mark_photo,
-    #     args=("N",),
-    # )
-    #
-    # st_maybe.button(
-    #     "Maybe",
-    #     help="Do not mark the label and move on",
-    #     on_click=_mark_photo,
-    #     args=("M",),
-    # )
-
-    # +----------------------+
-    # | Hyperparameters Data |
-    # +----------------------+
-
     st_data, st_save = st.columns((6, 1))
 
     with st_data:
         with st.expander("View stored hyperparameters"):
-            st.dataframe(
-                obstacles_hyperparameters.dropna(
-                    # subset=["label_quality", "sigma"],
-                    subset=["sigma"],
-                    how="all",
-                )
-            )
+            st.dataframe(obstacles_hyperparameters.dropna(subset="sigma"))
 
-    if st_save.button("💾", help="Save the labels vetted so far to Dropbox"):
-        _save_data_to_dropbox(obstacles_hyperparameters)
+    if st_save.button("💾", help="Save hyperparameters to Dropbox"):
+        utils.save_annotations_to_dropbox(
+            obstacles_hyperparameters.dropna(subset="sigma"),
+            "obstacles-annotated_hyperparameters",
+            DROPBOX_HYPERPARAMETERS_PATH,
+        )

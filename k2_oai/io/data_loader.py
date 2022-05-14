@@ -1,23 +1,28 @@
 """
-Loads and manipulates data from dropbox
+Loads data and photos from Dropbox
 """
 
 import os
 
 import cv2 as cv
+import geopandas
 import pandas as pd
 
+from k2_oai.io import dropbox as dbx
+from k2_oai.io.dropbox_paths import DROPBOX_METADATA_PATH
 from k2_oai.utils import draw_boundaries, rotate_and_crop_roof
 
-__all__ = (
+__all__ = [
     "dbx_load_dataframe",
-    "dbx_get_metadata",
+    "dbx_load_metadata",
+    "dbx_load_geo_metadata",
+    "dbx_load_annotations_data",
     "dbx_load_photo",
-    "crop_roofs_from_roof_id",
-)
+    "dbx_load_photos_from_roof_id",
+]
 
 
-def dbx_load_dataframe(filename, dropbox_path, dropbox_app=None):
+def dbx_load_dataframe(filename, dropbox_path, dropbox_app):
 
     dropbox_file = f"{dropbox_path}/{filename}"
 
@@ -36,48 +41,117 @@ def dbx_load_dataframe(filename, dropbox_path, dropbox_app=None):
     return data
 
 
-def dbx_get_metadata(file_format: str = "parquet", dropbox_path=None, dropbox_app=None):
-    if file_format not in ["parquet", "csv"]:
-        raise ValueError("file_format must be either 'parquet' or 'csv'")
-
-    path = dropbox_path or "/k2/metadata/transformed_data"
-
+def dbx_load_metadata(dropbox_app):
     return dbx_load_dataframe(
-        f"join-roofs_images_obstacles.{file_format}",
-        dropbox_path=path,
+        "join-roofs_images_obstacles.parquet",
+        dropbox_path=DROPBOX_METADATA_PATH,
         dropbox_app=dropbox_app,
     )
 
 
-# TODO: convert code in notebook into functions here
-# def dbx_get_labels_quality_data(dropbox_app):
+def dbx_create_geo_metadata(dropbox_app):
+    metadata = (
+        dbx_load_metadata(dropbox_app=dropbox_app)
+        .dropna(subset=["center_lng", "center_lat"])
+        .rename(columns={"center_lng": "lon", "center_lat": "lat"})
+    )
+
+    return geopandas.GeoDataFrame(
+        metadata,
+        geometry=geopandas.points_from_xy(metadata.lon, metadata.lat),
+        crs=4326,
+    )
 
 
-def dbx_load_photo(photo_name, dropbox_path, dropbox_app, greyscale_only: bool = False):
+def dbx_load_geo_metadata(dropbox_app):
+    return dbx_load_dataframe(
+        "geometries-roofs_images_obstacles.parquet",
+        dropbox_path=DROPBOX_METADATA_PATH,
+        dropbox_app=dropbox_app,
+    )
 
-    download_path = f"{photo_name}"
-    dropbox_path = f"{dropbox_path}/{photo_name}"
 
-    dropbox_app.files_download_to_file(download_path, dropbox_path)
+def dbx_load_annotations_data(dropbox_app, update_annotations=False):
+
+    if not update_annotations:
+        return dbx_load_dataframe(
+            "obstacles-labels_annotations.csv",
+            dropbox_path=DROPBOX_METADATA_PATH,
+            dropbox_app=dropbox_app,
+        )
+
+    metadata_folder_contents = dbx.dropbox_list_contents_of(
+        dropbox_app, DROPBOX_METADATA_PATH
+    )
+
+    label_annotation_checkpoints = metadata_folder_contents.loc[
+        lambda df: df.item_name.str.contains("-obstacles-labels_annotations.csv")
+    ]
+
+    dataframes = [
+        dbx_load_dataframe(file, DROPBOX_METADATA_PATH, dropbox_app)
+        for file in label_annotation_checkpoints.item_name
+    ]
+
+    label_annotations = pd.concat(dataframes, ignore_index=True)
+
+    annotated_data = (
+        label_annotations.drop_duplicates(subset="roof_id", keep="last")
+        .set_index("roof_id")
+        .reset_index()
+    )
+
+    annotated_data.to_csv("obstacles-labels_annotations.csv", index=False)
+
+    dbx.dropbox_upload_file_to(
+        dropbox_app,
+        "obstacles-labels_annotations.csv",
+        f"{DROPBOX_METADATA_PATH}/obstacles-labels_annotations.csv",
+    )
+
+    os.remove("obstacles-labels_annotations.csv")
+
+    return annotated_data
+
+
+def dbx_load_photo(
+    photo_name, dropbox_folder, dropbox_app, greyscale_only: bool = False
+):
+
+    dropbox_path = f"{dropbox_folder}/{photo_name}"
+
+    dropbox_app.files_download_to_file(photo_name, dropbox_path)
 
     if greyscale_only:
         greyscale_image = cv.imread(photo_name, 0)
 
-        if os.path.exists(download_path):
-            os.remove(download_path)
+        os.remove(photo_name)
 
         return greyscale_image
 
     bgr_image = cv.imread(photo_name, 1)
     greyscale_image = cv.imread(photo_name, 0)
 
-    if os.path.exists(download_path):
-        os.remove(download_path)
+    os.remove(photo_name)
 
     return bgr_image, greyscale_image
 
 
-def _get_coordinates_from_roof_id(roof_id, photos_metadata) -> tuple[str, list[str]]:
+def dbx_load_photos_from_roof_id(
+    roof_id,
+    photos_metadata,
+    dropbox_path,
+    dropbox_app,
+    greyscale_only: bool = False,
+):
+    photo_name = photos_metadata.loc[
+        lambda df: df["roof_id"] == roof_id, "imageURL"
+    ].values[0]
+
+    return dbx_load_photo(photo_name, dropbox_path, dropbox_app, greyscale_only)
+
+
+def get_coordinates_from_roof_id(roof_id, photos_metadata) -> tuple[str, list[str]]:
 
     roof_px_coordinates = photos_metadata.loc[
         photos_metadata.roof_id == roof_id, "pixelCoordinates_roof"
@@ -93,38 +167,24 @@ def _get_coordinates_from_roof_id(roof_id, photos_metadata) -> tuple[str, list[s
     return roof_px_coordinates, obstacles_px_coordinates
 
 
-def _load_photos_from_roof_id(
+def load_and_crop_roof_from_roof_id(
     roof_id,
     photos_metadata,
     dropbox_path,
     dropbox_app,
     greyscale_only: bool = False,
 ):
-    photo_name = photos_metadata.loc[
-        lambda df: df["roof_id"] == roof_id, "imageURL"
-    ].values[0]
-
-    return dbx_load_photo(photo_name, dropbox_path, dropbox_app, greyscale_only)
-
-
-def crop_roofs_from_roof_id(
-    roof_id,
-    photos_metadata,
-    dropbox_path,
-    dropbox_app,
-    greyscale_only: bool = False,
-):
-    roof_px_coord, obstacles_px_coord = _get_coordinates_from_roof_id(
+    roof_px_coord, obstacles_px_coord = get_coordinates_from_roof_id(
         roof_id, photos_metadata
     )
 
     if greyscale_only:
-        greyscale_image = _load_photos_from_roof_id(
+        greyscale_image = dbx_load_photos_from_roof_id(
             roof_id, photos_metadata, dropbox_path, dropbox_app, greyscale_only
         )
         return rotate_and_crop_roof(greyscale_image, roof_px_coord)
 
-    bgr_image, greyscale_image = _load_photos_from_roof_id(
+    bgr_image, greyscale_image = dbx_load_photos_from_roof_id(
         roof_id, photos_metadata, dropbox_path, dropbox_app
     )
 

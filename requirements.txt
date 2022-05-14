@@ -16,7 +16,6 @@ charset-normalizer==2.0.12
 click==8.0.4
 click-plugins==1.1.1
 cligj==0.7.2
-contextily==1.2.0
 cycler==0.11.0
 debugpy==1.6.0
 decorator==5.1.1
@@ -77,6 +76,7 @@ pure-eval==0.2.2
 pyarrow==7.0.0
 pycparser==2.21
 pydeck==0.7.1
+pygeos==0.12.0
 Pygments==2.11.2
 Pympler==1.0.1
 pyparsing==3.0.7
@@ -90,6 +90,7 @@ pytz-deprecation-shim==0.1.0.post0
 pyzmq==22.3.0
 rasterio==1.2.10
 requests==2.27.1
+Rtree==1.0.0
 semver==2.13.0
 Send2Trash==1.8.0
 Shapely==1.8.2
@@ -110,6 +111,7 @@ tzdata==2022.1
 tzlocal==4.2
 urllib3==1.26.9
 validators==0.18.2
+vega-datasets==0.9.0
 watchdog==2.1.7
 wcwidth==0.2.5
 webencodings==0.5.1

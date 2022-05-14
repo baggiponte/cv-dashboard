@@ -1,6 +1,6 @@
 import os
 
-from k2_oai.io.dropbox import upload_file_to_dropbox
+from k2_oai.io.dropbox import dropbox_upload_file_to
 
 _HARD_DISK_PATH = "/Volumes/Elements/Big_Size_Images_2"
 
@@ -11,7 +11,7 @@ def upload_hard_disk_data(dropbox_app, hard_disk_path=None):
     for photo in photo_list[5000:10000]:
         if "Thumbs" not in photo:
             print(photo)
-            upload_file_to_dropbox(
+            dropbox_upload_file_to(
                 dropbox_app,
                 os.path.join(hd_path, photo),
                 f"/k2/raw_photos/large_photos-5K_10K-api_upload/{photo}",
