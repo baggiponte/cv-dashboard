@@ -2,6 +2,7 @@
 Dashboard page/mode to accept or reject the obstacle label available from the database.
 """
 
+import altair as alt
 import numpy as np
 import streamlit as st
 
@@ -96,7 +97,8 @@ def obstacle_annotator_page():
             key="roof_id_selector",
         )
 
-        st.markdown("---")
+        # uncomment if adding another section
+        # st.markdown("---")
 
     k2_labelled_image, bgr_roof, _ = utils.load_and_crop_roof_from_roof_id(
         int(chosen_roof_id), photos_metadata, chosen_folder
@@ -164,7 +166,7 @@ def obstacle_annotator_page():
     # View Label Quality Dataset
     # --------------------------
 
-    st_data, st_save = st.columns((6, 1))
+    st_data, st_save = st.columns((5, 1))
 
     with st_data:
         with st.expander("View the annotations:", expanded=True):
@@ -172,7 +174,7 @@ def obstacle_annotator_page():
 
     with st_save:
         st.info(
-            f"Currently vetted {len(label_annotations.dropna(subset='label_annotation'))} roofs"  # noqa E50
+            f"{len(label_annotations.dropna(subset='label_annotation'))} roofs vetted"
         )
         if st.button("💾", help="Save the annotations done so far to Dropbox"):
             utils.save_annotations_to_dropbox(
@@ -180,3 +182,27 @@ def obstacle_annotator_page():
                 "obstacles-annotated_labels",
                 DROPBOX_ANNOTATIONS_PATH,
             )
+
+    # +------------------------+
+    # | Annotations Statistics |
+    # +------------------------+
+
+    annotations = (
+        utils.st_load_annotations_data()
+        .groupby("label_annotation")
+        .size()
+        .rename(index={"Y": "Good", "N": "Bad", "M": "Improve"})
+        .reset_index()
+        .rename(columns={0: "Count", "label_annotation": "Annotation"})
+        .sort_values("Count", ascending=False)
+    )
+
+    fig = (
+        alt.Chart(annotations)
+        .mark_bar()
+        .encode(x="Annotation:N", y="Count:Q", tooltip=["Count"])
+    )
+
+    with st.sidebar:
+        st.subheader("Annotations Statistics")
+        st.altair_chart(fig, use_container_width=True)

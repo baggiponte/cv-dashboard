@@ -107,6 +107,12 @@ def st_load_geo_metadata(dropbox_app=None):
     return data_loader.dbx_load_geo_metadata(dbx_app)
 
 
+@st.cache(allow_output_mutation=True)
+def st_load_earth(dropbox_app=None):
+    dbx_app = dropbox_app or st_dropbox_connect()
+    return data_loader.dbx_load_earth(dbx_app)
+
+
 @st.cache
 def st_load_annotations_data(dropbox_app=None, update_annotations=False):
     dbx_app = dropbox_app or st_dropbox_connect()
