@@ -182,7 +182,7 @@ def obstacle_detection_page():
                 If -1, it will be deduced from the image's size
                 """,
                 min_value=-1,
-                max_value=greyscale_roof.size,
+                max_value=255,
                 step=2,
                 key="bin_adaptive_kernel",
             )
