@@ -68,7 +68,7 @@ def obstacle_detection_page():
         chosen_folder = st.selectbox(
             "Select the folder to load the photos from: ",
             options=photos_folders,
-            index=3,
+            index=0,
         )
 
         photos_metadata, dbx_photo_list = utils.st_load_photo_list_and_metadata(
@@ -181,12 +181,17 @@ def obstacle_detection_page():
                 Size of the pixel neighbourhood (positive, odd integer):
                 If 'auto', tolerance will be deduced from the histogram's variance
                 """,
+                value="auto",
                 key="bin_adaptive_kernel",
             )
             chosen_tolerance = None
         elif chosen_binarisation_method == "Composite":
             chosen_tolerance = st.text_input(
-                "Insert the desired tolerance for composite binarisation",
+                """
+                Tolerance for the composite binarisation method (positive, odd integer):
+                If 'auto', tolerance will be deduced from the histogram's variance
+                """,
+                value="auto",
                 key="bin_composite_tolerance",
             )
             chosen_blocksize = None

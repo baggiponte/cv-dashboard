@@ -37,7 +37,7 @@ def obstacle_labeller_page():
         chosen_folder = st.selectbox(
             "Select the folder to load the photos from: ",
             options=photos_folders,
-            index=3,
+            index=0,
         )
 
         photos_metadata, dbx_photo_list = utils.st_load_photo_list_and_metadata(

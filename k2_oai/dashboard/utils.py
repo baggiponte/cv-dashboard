@@ -142,8 +142,8 @@ def st_load_photo(
     return data_loader.dbx_load_photo(photo_name, dbx_path, dbx_app, greyscale_only)
 
 
-@st.cache
-def st_load_photos_from_roof_id(
+@st.cache(allow_output_mutation=True)
+def st_load_photo_from_roof_id(
     roof_id, photos_metadata, chosen_folder, dropbox_app=None, greyscale_only=False
 ):
     dbx_app = dropbox_app or st_dropbox_connect()
@@ -182,12 +182,12 @@ def load_and_crop_roof_from_roof_id(
     )
 
     if greyscale_only:
-        greyscale_image = st_load_photos_from_roof_id(
+        greyscale_image = st_load_photo_from_roof_id(
             roof_id, photos_metadata, dropbox_path, dropbox_app, greyscale_only
         )
         return rotate_and_crop_roof(greyscale_image, roof_px_coord)
 
-    bgr_image, greyscale_image = st_load_photos_from_roof_id(
+    bgr_image, greyscale_image = st_load_photo_from_roof_id(
         roof_id, photos_metadata, dropbox_path, dropbox_app
     )
 
@@ -219,7 +219,7 @@ def obstacle_detection_pipeline(
         )
     else:
         binarized_roof = binarization_step(
-            filtered_roof, method="c", composite_tolerance=int(tolerance)
+            filtered_roof, method="c", composite_tolerance=tolerance
         )
 
     blurred_roof = morphological_opening_step(binarized_roof)

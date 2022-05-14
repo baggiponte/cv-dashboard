@@ -168,33 +168,33 @@ def binarization_step(
             adaptive_constant,
         )
     else:  # method == 'c', i.e. composite
-        histogram_length: int = 256
-
         # compute the greyscale histogram just for the first channel
         greyscale_histogram = cv.calcHist(
-            [input_image], [0], None, [histogram_length], [0, 256], accumulate=False
+            [input_image], [0], None, [256], [0, 256], accumulate=False
         )
         greyscale_histogram[0] = greyscale_histogram[0] - n_zeros_mask
 
-        if composite_tolerance not in range(0, 256):
-            raise ValueError("Composite tolerance must be in the range [0, 255].")
-        elif composite_tolerance is None:
+        if composite_tolerance is None or composite_tolerance == "auto":
             composite_tolerance = int(np.var(greyscale_histogram) / 15000)
             if composite_tolerance > 255:
                 composite_tolerance = 255
+        else:
+            is_positive_odd_integer(int(composite_tolerance))
+            composite_tolerance = int(composite_tolerance)
+            if composite_tolerance not in range(0, 256):
+                raise ValueError("Composite tolerance must be in the range [0, 255].")
 
         max_frequency = np.argmax(np.array(greyscale_histogram))
-        scaled_max_frequency = max_frequency * 256 / histogram_length
 
         _, im_tresh_light = cv.threshold(
             input_image,
-            scaled_max_frequency + composite_tolerance,
+            max_frequency + composite_tolerance,
             255,
             cv.THRESH_BINARY,
         )
         _, im_tresh_dark = cv.threshold(
             input_image,
-            scaled_max_frequency - composite_tolerance,
+            max_frequency - composite_tolerance,
             255,
             cv.THRESH_BINARY_INV,
         )
