@@ -176,22 +176,25 @@ def obstacle_detection_page():
         )
 
         if chosen_binarisation_method == "Adaptive":
-            chosen_blocksize = st.text_input(
+            chosen_blocksize = st.slider(
                 """
-                Size of the pixel neighbourhood (positive, odd integer):
-                If 'auto', tolerance will be deduced from the histogram's variance
+                Size of the pixel neighbourhood.
+                If -1, it will be deduced from the image's size
                 """,
-                value="auto",
+                min_value=-1,
+                max_value=greyscale_roof.size,
+                step=2,
                 key="bin_adaptive_kernel",
             )
             chosen_tolerance = None
         elif chosen_binarisation_method == "Composite":
-            chosen_tolerance = st.text_input(
+            chosen_tolerance = st.slider(
                 """
-                Tolerance for the composite binarisation method (positive, odd integer):
-                If 'auto', tolerance will be deduced from the histogram's variance
+                Tolerance for the composite binarisation method.
+                If -1, tolerance will be deduced from the histogram's variance
                 """,
-                value="auto",
+                min_value=-1,
+                max_value=255,
                 key="bin_composite_tolerance",
             )
             chosen_blocksize = None

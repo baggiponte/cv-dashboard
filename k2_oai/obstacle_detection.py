@@ -108,7 +108,7 @@ def binarization_step(
     method: str = "s",
     adaptive_kernel_size: int | None = None,
     adaptive_constant: int = 0,
-    composite_tolerance: int | None | str = None,
+    composite_tolerance: int | None = None,
 ) -> ndarray:
     """Applies a threshold on the grayscale input image. Depending on the method,
     applies simple thresholding (using the Otsu method to compute the threshold) or
@@ -126,13 +126,14 @@ def binarization_step(
         - 'c' or 'composite' stands for composite thresholding;
     adaptive_kernel_size : int (default: None)
         Only used in adaptive thresholding. The size of the kernel for binarization.
-        Must be a positive, odd number. If None, then defaults to 0,001 times the size
-        of the image.
+        Must be a positive, odd number. If None (or -1), then defaults to 0,001 times
+        the size of the image.
     adaptive_constant : int (default: 0)
         (Only for adaptive thresholding) The constant subtracted from the mean,
         or weighted mean. Normally is positive, but can also be negative.
     composite_tolerance : int (default)
-        (Only for composite thresholding) A threshold in the range [0, 255].
+        (Only for composite thresholding) A threshold in the range [0, 255]. If None (or
+        -1), it is computed from the variance of the color histogram.
 
     Return
     ------
@@ -151,13 +152,13 @@ def binarization_step(
             masked_image, otsu_threshold, 255, cv.THRESH_BINARY
         )
     elif method == "a" or method == "adaptive":
-        if adaptive_kernel_size is None or adaptive_kernel_size == "auto":
+        if adaptive_kernel_size is None or adaptive_kernel_size == -1:
             threshold_kernel: int = int(input_image.size / 1000)
             if threshold_kernel % 2 == 0:
                 threshold_kernel += 1
         else:
-            is_positive_odd_integer(int(adaptive_kernel_size))
-            threshold_kernel: int = int(adaptive_kernel_size)
+            is_positive_odd_integer(adaptive_kernel_size)
+            threshold_kernel: int = adaptive_kernel_size
 
         binarized_image = cv.adaptiveThreshold(
             masked_image,
@@ -174,15 +175,12 @@ def binarization_step(
         )
         greyscale_histogram[0] = greyscale_histogram[0] - n_zeros_mask
 
-        if composite_tolerance is None or composite_tolerance == "auto":
+        if composite_tolerance is None or composite_tolerance == -1:
             composite_tolerance = int(np.var(greyscale_histogram) / 15000)
             if composite_tolerance > 255:
                 composite_tolerance = 255
-        else:
-            is_positive_odd_integer(int(composite_tolerance))
-            composite_tolerance = int(composite_tolerance)
-            if composite_tolerance not in range(0, 256):
-                raise ValueError("Composite tolerance must be in the range [0, 255].")
+        elif composite_tolerance not in range(0, 256):
+            raise ValueError("Composite tolerance must be in the range [0, 255].")
 
         max_frequency = np.argmax(np.array(greyscale_histogram))
 
