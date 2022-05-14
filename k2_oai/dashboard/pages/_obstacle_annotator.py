@@ -6,17 +6,17 @@ import numpy as np
 import streamlit as st
 
 from k2_oai.dashboard import utils
-from k2_oai.io.dropbox_paths import DROPBOX_METADATA_PATH, DROPBOX_RAW_PHOTOS_ROOT
+from k2_oai.io.dropbox_paths import DROPBOX_ANNOTATIONS_PATH, DROPBOX_RAW_PHOTOS_ROOT
 
-__all__ = ["obstacle_labeller_page"]
+__all__ = ["obstacle_annotator_page"]
 
 
 def annotate_labels(mark: str, roof_id, label_data):
-    label_data.loc[label_data["roof_id"] == roof_id, "label_quality"] = mark
+    label_data.loc[label_data["roof_id"] == roof_id, "label_annotation"] = mark
 
 
-def obstacle_labeller_page():
-    st.title(":mag: Labelling Tool")
+def obstacle_annotator_page():
+    st.title(":mag: Obstacle Annotation Tool")
     st.write(
         "Choose a roof id to see the labels that have been assigned to it",
         "then use the buttons provided below to mark the label as good (`Y`),",
@@ -58,12 +58,12 @@ def obstacle_labeller_page():
             photos_metadata[["roof_id", "imageURL"]]
             .drop_duplicates("roof_id")
             .sort_values("roof_id")
-            .assign(label_annotations=np.NaN)
+            .assign(label_annotation=np.NaN)
         )
 
     if "roofs_to_label" not in st.session_state:
         st.session_state["roofs_to_label"] = st.session_state["label_annotations"].loc[
-            lambda df: df.label_quality.isna()
+            lambda df: df["label_annotation"].isna()
         ]
 
     label_annotations = st.session_state["label_annotations"]
@@ -168,15 +168,15 @@ def obstacle_labeller_page():
 
     with st_data:
         with st.expander("View the annotations:", expanded=True):
-            st.dataframe(label_annotations.dropna(subset="label_annotations"))
+            st.dataframe(label_annotations.dropna(subset="label_annotation"))
 
     with st_save:
         st.info(
-            f"Currently vetted {len(label_annotations.dropna(subset='label_annotations'))} roofs"  # noqa E50
+            f"Currently vetted {len(label_annotations.dropna(subset='label_annotation'))} roofs"  # noqa E50
         )
         if st.button("💾", help="Save the annotations done so far to Dropbox"):
             utils.save_annotations_to_dropbox(
-                label_annotations.dropna(subset="label_annotations"),
+                label_annotations.dropna(subset="label_annotation"),
                 "obstacles-annotated_labels",
-                DROPBOX_METADATA_PATH,
+                DROPBOX_ANNOTATIONS_PATH,
             )

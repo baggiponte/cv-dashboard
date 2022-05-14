@@ -50,7 +50,7 @@ def main():
             (
                 "Instructions",
                 "Data Explorer",
-                "Obstacle Labelling Tool",
+                "Obstacle Annotation Tool",
                 "Obstacle Detection",
             ),
         )
@@ -61,10 +61,10 @@ def main():
             readme_text.empty()
             st.sidebar.markdown("___")
             pages.obstacle_detection_page()
-        elif app_mode == "Obstacle Labelling Tool":
+        elif app_mode == "Obstacle Annotation Tool":
             readme_text.empty()
             st.sidebar.markdown("___")
-            pages.obstacle_labeller_page()
+            pages.obstacle_annotator_page()
         elif app_mode == "Data Explorer":
             readme_text.empty()
             st.sidebar.markdown("___")

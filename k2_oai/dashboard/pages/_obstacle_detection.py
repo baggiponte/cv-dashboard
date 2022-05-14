@@ -108,7 +108,7 @@ def obstacle_detection_page():
     if "roofs_to_label" not in st.session_state:
         st.session_state["roofs_to_label"] = st.session_state[
             "obstacles_hyperparameters"
-        ].loc[lambda df: df.sigma.isna()]
+        ].loc[lambda df: df["sigma"].isna()]
 
     obstacles_hyperparameters = st.session_state["obstacles_hyperparameters"]
     roofs_to_label = st.session_state["roofs_to_label"]

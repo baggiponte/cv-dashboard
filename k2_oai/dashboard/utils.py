@@ -110,7 +110,7 @@ def st_load_geo_metadata(dropbox_app=None):
 @st.cache
 def st_load_annotations_data(dropbox_app=None, update_annotations=False):
     dbx_app = dropbox_app or st_dropbox_connect()
-    return data_loader.dbx_load_annotations_data(dbx_app, update_annotations)
+    return data_loader.dbx_load_label_annotations(dbx_app, update_annotations)
 
 
 @st.cache
@@ -242,7 +242,11 @@ def load_random_photo(roofs_list):
     st.session_state["roof_id_selector"] = np.random.choice(roofs_list.roof_id)
 
 
-def save_annotations_to_dropbox(data_to_upload, filename, destination_folder):
+def save_annotations_to_dropbox(
+    data_to_upload,
+    filename,
+    destination_folder,
+):
 
     dbx_app = st_dropbox_connect()
 
@@ -251,8 +255,6 @@ def save_annotations_to_dropbox(data_to_upload, filename, destination_folder):
     file_to_upload = f"/tmp/{timestamp}-{filename}.csv"
     destination_path = f"{destination_folder}/{timestamp}-{filename}.csv"
 
-    data_to_upload.dropna(subset="label_annotations").to_csv(
-        file_to_upload, index=False
-    )
+    data_to_upload.to_csv(file_to_upload, index=False)
 
     dbx.dropbox_upload_file_to(dbx_app, file_to_upload, destination_path)
