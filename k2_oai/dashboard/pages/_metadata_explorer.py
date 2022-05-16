@@ -4,6 +4,7 @@ satellite photos' zoom levels.
 """
 
 import altair as alt
+import numpy as np
 import streamlit as st
 
 from k2_oai.dashboard import utils
@@ -26,59 +27,85 @@ def metadata_explorer_page():
     # | Zoom Levels   |
     # +---------------+
 
-    with st.sidebar:
-        st.subheader("Photos Distribution by Zoom Level")
-        st.write(
-            """
-        Each increase in zoom level is twice as large in both the x and y directions.
-        Therefore, each higher zoom level results in a resolution four times higher than
-        the preceding level. For example, at zoom level 0 the map consists of one single
-        256x256 pixel tile. At zoom level 1, the map consists of four 256x256 pixel
-        tiles, resulting in a pixel space from 512x512.
-
-        Furthermore, the zoom level range depends on the world area you are looking at.
-        In other words, in some parts of the world, zoom is available up to only a
-        certain level.
+    st.subheader("Photos Distribution by Zoom Level")
+    st.write(
         """
-        )
+    Each increase in zoom level is twice as large in both the x and y directions.
+    Therefore, each higher zoom level results in a resolution four times higher than
+    the preceding level. For example, at zoom level 0 the map consists of one single
+    256x256 pixel tile. At zoom level 1, the map consists of four 256x256 pixel
+    tiles, resulting in a pixel space from 512x512.
 
-    zoom_levels = metadata.groupby("zoom").size()
-    st.bar_chart(zoom_levels)
+    Furthermore, the zoom level range depends on the world area you are looking at.
+    In other words, in some parts of the world, zoom is available up to only a
+    certain level.
 
-    # +-------------------------+
-    # | Zoom level by continent |
-    # +-------------------------+
-
-    st.subheader("Zoom Level Distribution by Continent")
+    The graph below shows the distribution of the zoom levels in the world. The most
+    represented class is European roofs with zoom level 18, which makes up 43% of all
+    available roofs. Roofs from Europe make up around 95% of all roof data.
+    """
+    )
 
     zoom_levels_by_continent = (
         metadata.groupby(["continent", "zoom"])
         .size()
         .reset_index()
-        .rename(columns={0: "count"})
-        .astype({"zoom": "int8"})
-        .set_index("continent")
-    )
-
-    st_plot, st_selector = st.columns((3, 1))
-
-    st_selector.selectbox(
-        "Select a continent",
-        options=(zoom_levels_by_continent.index.unique()),
-        key="continent_selector",
+        .rename(
+            columns={
+                0: "Number of Roofs",
+                "zoom": "Zoom Level",
+                "continent": "Continent",
+            }
+        )
+        .astype({"Zoom Level": "int8"})
+        .assign(
+            Percentage=lambda df: np.round(
+                df["Number of Roofs"] / df["Number of Roofs"].sum() * 100
+            )
+        )
     )
 
     fig = (
-        alt.Chart(
-            zoom_levels_by_continent.loc[
-                lambda df: df.index == st.session_state["continent_selector"]
-            ]
-        )
+        alt.Chart(zoom_levels_by_continent)
         .mark_bar()
-        .encode(x="zoom:N", y="count:Q")
+        .encode(
+            x="Zoom Level:N",
+            y="Number of Roofs:Q",
+            color="Continent:N",
+            tooltip=["Number of Roofs", "Percentage"],
+        )
+        .interactive()
     )
 
-    st_plot.altair_chart(fig, use_container_width=True)
+    st.altair_chart(fig, use_container_width=True)
+
+    # +-------------------------+
+    # | Zoom level by continent |
+    # +-------------------------+
+
+    with st.expander("Inspect zoom levels by continent"):
+
+        st_plot, st_selector = st.columns((3, 1))
+
+        st_selector.selectbox(
+            "Select a continent",
+            options=(zoom_levels_by_continent.Continent.unique()),
+            key="continent_detail",
+        )
+
+        fig = (
+            alt.Chart(
+                zoom_levels_by_continent.loc[
+                    lambda df: df.Continent == st.session_state["continent_detail"]
+                ]
+            )
+            .mark_bar()
+            .encode(
+                x="Zoom Level:N", y="Number of Roofs:Q", tooltip=["Number of Roofs"]
+            )
+        )
+
+        st_plot.altair_chart(fig, use_container_width=True)
 
     # +----------------+
     # | World Map      |
@@ -87,30 +114,46 @@ def metadata_explorer_page():
     st.subheader("Zoom Level Distribution by Country")
 
     zoom_levels_by_country = (
-        metadata.groupby(["name", "zoom"])
+        metadata.groupby(["continent", "name", "zoom"])
         .size()
         .reset_index()
-        .rename(columns={0: "count"})
-        .astype({"zoom": "int8"})
-        .set_index("name")
+        .rename(
+            columns={
+                0: "Number of Roofs",
+                "name": "Country",
+                "zoom": "Zoom Level",
+                "continent": "Continent",
+            }
+        )
+        .astype({"Zoom Level": "int8"})
+        .assign(
+            Percentage=lambda df: np.round(
+                df["Number of Roofs"] / df["Number of Roofs"].sum() * 100
+            )
+        )
     )
 
     st_plot, st_selector = st.columns((3, 1))
 
     st_selector.selectbox(
         "Select a continent",
-        options=(zoom_levels_by_country.index.unique()),
-        key="country_selector",
+        options=(zoom_levels_by_country.Continent.unique()),
+        key="continent_selector",
     )
 
     fig = (
         alt.Chart(
             zoom_levels_by_country.loc[
-                lambda df: df.index == st.session_state["country_selector"]
+                lambda df: df.Continent == st.session_state["continent_selector"]
             ]
         )
         .mark_bar()
-        .encode(x="zoom:N", y="count:Q")
+        .encode(
+            x="Zoom Level:N",
+            y="Number of Roofs:Q",
+            color="Country:N",
+            tooltip=["Country", "Number of Roofs", "Percentage"],
+        )
     )
 
     st_plot.altair_chart(fig, use_container_width=True)

@@ -38,7 +38,7 @@ def main():
 
         * `Instructions` is this page.
         * `Data Explorer` is an interface to perform exploratory data analysis.
-        * `Obstacle Labelling Tool` us a tool to annotate images and create new labels.
+        * `Obstacle Annotation Tool` us a tool to annotate images and create new labels.
         * `Obstacle Detection` is the interface to explore the image segmentation model.
 
         """

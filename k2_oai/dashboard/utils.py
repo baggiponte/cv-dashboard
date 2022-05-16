@@ -39,7 +39,7 @@ __all__ = [
     "st_load_dataframe",
     "st_load_metadata",
     "st_load_geo_metadata",
-    "st_load_annotations_data",
+    "st_load_label_annotations",
     "load_random_photo",
 ]
 
@@ -113,10 +113,10 @@ def st_load_earth(dropbox_app=None):
     return data_loader.dbx_load_earth(dbx_app)
 
 
-@st.cache
-def st_load_annotations_data(dropbox_app=None, update_annotations=False):
+@st.cache(allow_output_mutation=True)
+def st_load_label_annotations(filename, dropbox_app=None):
     dbx_app = dropbox_app or st_dropbox_connect()
-    return data_loader.dbx_load_label_annotations(dbx_app, update_annotations)
+    return data_loader.dbx_load_label_annotations(filename, dbx_app)
 
 
 @st.cache
@@ -245,21 +245,21 @@ def obstacle_detection_pipeline(
 
 
 def load_random_photo(roofs_list):
-    st.session_state["roof_id_selector"] = np.random.choice(roofs_list.roof_id)
+    st.session_state["roof_id_selector"] = np.random.choice(roofs_list)
 
 
 def save_annotations_to_dropbox(
-    data_to_upload,
-    filename,
-    destination_folder,
+    data_to_upload, filename, destination_folder, make_checkpoint=False
 ):
 
     dbx_app = st_dropbox_connect()
 
-    timestamp = datetime.now().replace(microsecond=0).strftime("%Y_%m_%d-%H_%M_%S")
+    if make_checkpoint:
+        timestamp = datetime.now().replace(microsecond=0).strftime("%Y_%m_%d-%H_%M_%S")
+        filename = f"{timestamp}-{filename}.csv"
 
-    file_to_upload = f"/tmp/{timestamp}-{filename}.csv"
-    destination_path = f"{destination_folder}/{timestamp}-{filename}.csv"
+    file_to_upload = f"/tmp/{filename}"
+    destination_path = f"{destination_folder}/{filename}.csv"
 
     data_to_upload.to_csv(file_to_upload, index=False)
 

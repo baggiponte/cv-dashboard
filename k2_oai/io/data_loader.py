@@ -96,23 +96,20 @@ def dbx_load_earth(dropbox_app):
     )
 
 
-def dbx_load_label_annotations(dropbox_app, update_annotations=False):
-
-    if not update_annotations:
-        return dbx_load_dataframe(
-            "obstacles-labels_annotations.csv",
-            dropbox_path=DROPBOX_ANNOTATIONS_PATH,
-            dropbox_app=dropbox_app,
-        )
+def dbx_create_label_annotations(dropbox_app, num_checkpoints: int = 0):
 
     metadata_folder_contents = dbx.dropbox_list_contents_of(
         dropbox_app, DROPBOX_ANNOTATIONS_PATH
     )
 
     label_annotation_checkpoints = metadata_folder_contents.loc[
-        lambda df: df.item_name.str.contains("-obstacles-labels_annotations.csv")
+        lambda df: df.item_name.str.contains("-checkpoint-labels_annotations.csv")
     ]
 
+    if num_checkpoints > 0:
+        label_annotation_checkpoints = label_annotation_checkpoints.iloc[
+            :num_checkpoints
+        ]
     dataframes = [
         dbx_load_dataframe(file, DROPBOX_ANNOTATIONS_PATH, dropbox_app)
         for file in label_annotation_checkpoints.item_name
@@ -137,6 +134,14 @@ def dbx_load_label_annotations(dropbox_app, update_annotations=False):
     os.remove("obstacles-labels_annotations.csv")
 
     return annotated_data
+
+
+def dbx_load_label_annotations(filename, dropbox_app):
+    return dbx_load_dataframe(
+        filename,
+        dropbox_path=DROPBOX_ANNOTATIONS_PATH,
+        dropbox_app=dropbox_app,
+    )
 
 
 def dbx_load_photo(
