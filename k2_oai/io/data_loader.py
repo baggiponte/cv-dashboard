@@ -145,7 +145,7 @@ def dbx_load_label_annotations(filename, dropbox_app):
 
 
 def dbx_load_photo(
-    photo_name, dropbox_folder, dropbox_app, greyscale_only: bool = False
+    photo_name, dropbox_folder, dropbox_app, greyscale_only=False, bgr_only=False
 ):
 
     dropbox_path = f"{dropbox_folder}/{photo_name}"
@@ -158,6 +158,13 @@ def dbx_load_photo(
         os.remove(photo_name)
 
         return greyscale_image
+
+    if bgr_only:
+        bgr_image = cv.imread(photo_name, 1)
+
+        os.remove(photo_name)
+
+        return bgr_image
 
     bgr_image = cv.imread(photo_name, 1)
     greyscale_image = cv.imread(photo_name, 0)
@@ -173,12 +180,15 @@ def dbx_load_photos_from_roof_id(
     dropbox_path,
     dropbox_app,
     greyscale_only: bool = False,
+    bgr_only: bool = False,
 ):
     photo_name = photos_metadata.loc[
         lambda df: df["roof_id"] == roof_id, "imageURL"
     ].values[0]
 
-    return dbx_load_photo(photo_name, dropbox_path, dropbox_app, greyscale_only)
+    return dbx_load_photo(
+        photo_name, dropbox_path, dropbox_app, greyscale_only, bgr_only
+    )
 
 
 def get_coordinates_from_roof_id(roof_id, photos_metadata) -> tuple[str, list[str]]:
@@ -203,6 +213,8 @@ def load_and_crop_roof_from_roof_id(
     dropbox_path,
     dropbox_app,
     greyscale_only: bool = False,
+    bgr_only: bool = False,
+    with_labels: bool = False,
 ):
     roof_px_coord, obstacles_px_coord = get_coordinates_from_roof_id(
         roof_id, photos_metadata
@@ -210,16 +222,36 @@ def load_and_crop_roof_from_roof_id(
 
     if greyscale_only:
         greyscale_image = dbx_load_photos_from_roof_id(
-            roof_id, photos_metadata, dropbox_path, dropbox_app, greyscale_only
+            roof_id,
+            photos_metadata,
+            dropbox_path,
+            dropbox_app,
+            greyscale_only=greyscale_only,
         )
+        if with_labels:
+            labelled_roof = draw_boundaries(
+                greyscale_image, roof_px_coord, obstacles_px_coord
+            )
+            return rotate_and_crop_roof(labelled_roof, roof_px_coord)
         return rotate_and_crop_roof(greyscale_image, roof_px_coord)
+
+    if bgr_only:
+        bgr_image = dbx_load_photos_from_roof_id(
+            roof_id, photos_metadata, dropbox_path, dropbox_app, bgr_only=bgr_only
+        )
+        if with_labels:
+            labelled_roof = draw_boundaries(
+                bgr_image, roof_px_coord, obstacles_px_coord
+            )
+            return rotate_and_crop_roof(labelled_roof, roof_px_coord)
+        return rotate_and_crop_roof(bgr_image, roof_px_coord)
 
     bgr_image, greyscale_image = dbx_load_photos_from_roof_id(
         roof_id, photos_metadata, dropbox_path, dropbox_app
     )
 
     k2_labelled_image = draw_boundaries(bgr_image, roof_px_coord, obstacles_px_coord)
-    bgr_roof = rotate_and_crop_roof(k2_labelled_image, roof_px_coord)
+    labelled_roof = rotate_and_crop_roof(k2_labelled_image, roof_px_coord)
     greyscale_roof = rotate_and_crop_roof(greyscale_image, roof_px_coord)
 
-    return k2_labelled_image, bgr_roof, greyscale_roof
+    return k2_labelled_image, labelled_roof, greyscale_roof
