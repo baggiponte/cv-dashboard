@@ -39,7 +39,7 @@ __all__ = [
     "st_load_dataframe",
     "st_load_metadata",
     "st_load_geo_metadata",
-    "st_load_label_annotations",
+    "st_load_annotations",
     "load_random_photo",
 ]
 
@@ -114,7 +114,7 @@ def st_load_earth(dropbox_app=None):
 
 
 @st.cache(allow_output_mutation=True)
-def st_load_label_annotations(filename, dropbox_app=None):
+def st_load_annotations(filename, dropbox_app=None):
     dbx_app = dropbox_app or st_dropbox_connect()
     return data_loader.dbx_load_label_annotations(filename, dbx_app)
 
@@ -130,7 +130,7 @@ def st_load_photo_list_and_metadata(photos_folder, photos_root_path, dropbox_app
     photos_metadata = st_load_metadata(dropbox_app=dbx_app)
 
     available_photos_metadata = photos_metadata[
-        photos_metadata.imageURL.isin(photos_list.item_name.values)
+        photos_metadata.imageURL.isin(photos_list.item_name)
     ]
 
     return available_photos_metadata, photos_list
@@ -256,7 +256,7 @@ def save_annotations_to_dropbox(
 
     if make_checkpoint:
         timestamp = datetime.now().replace(microsecond=0).strftime("%Y_%m_%d-%H_%M_%S")
-        filename = f"{timestamp}-{filename}.csv"
+        filename = f"{timestamp}-{filename}"
 
     file_to_upload = f"/tmp/{filename}"
     destination_path = f"{destination_folder}/{filename}.csv"

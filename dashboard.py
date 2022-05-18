@@ -8,16 +8,13 @@ from k2_oai.dashboard import pages, utils
 def main():
     st.set_page_config(
         page_title="K2 <-> OAI",
-        page_icon=":house:",
+        page_icon=":house_buildings:",
         layout="wide",
         initial_sidebar_state="auto",
     )
 
-    if "access_token" not in st.session_state:
-        st.session_state["access_token"] = None
-
     st_oauth_text_boxes = st.empty()
-    if st.session_state["access_token"] is None:
+    if "access_token" not in st.session_state:
         if "DROPBOX_ACCESS_TOKEN" in os.environ:
             st.session_state["access_token"] = os.environ.get("DROPBOX_ACCESS_TOKEN")
         else:
@@ -26,9 +23,8 @@ def main():
                 st.session_state["access_token"] = oauth_result.access_token
                 st.session_state["refresh_token"] = oauth_result.refresh_token
 
-    if st.session_state["access_token"] is not None:
+    if "access_token" in st.session_state:
         st_oauth_text_boxes.empty()
-
         readme_text = st.markdown(
             """
         # :house: Welcome!

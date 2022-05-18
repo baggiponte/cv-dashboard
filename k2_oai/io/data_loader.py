@@ -115,15 +115,14 @@ def dbx_create_label_annotations(dropbox_app, num_checkpoints: int = 0):
         for file in label_annotation_checkpoints.item_name
     ]
 
-    label_annotations = pd.concat(dataframes, ignore_index=True)
-
-    annotated_data = (
-        label_annotations.drop_duplicates(subset="roof_id", keep="last")
-        .set_index("roof_id")
-        .reset_index()
+    label_annotations = (
+        pd.concat(dataframes, ignore_index=True)
+        .dropna(subset=["roof_id"], keep="last")
+        .sort_values("roof_id")
+        .reset_index(drop=True)
     )
 
-    annotated_data.to_csv("obstacles-labels_annotations.csv", index=False)
+    label_annotations.to_csv("obstacles-labels_annotations.csv", index=False)
 
     dbx.dropbox_upload_file_to(
         dropbox_app,
@@ -132,8 +131,6 @@ def dbx_create_label_annotations(dropbox_app, num_checkpoints: int = 0):
     )
 
     os.remove("obstacles-labels_annotations.csv")
-
-    return annotated_data
 
 
 def dbx_load_label_annotations(filename, dropbox_app):
