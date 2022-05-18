@@ -25,6 +25,32 @@ def annotate_labels(mark: str, roof_id, label_data, photos_metadata):
     label_data.loc[label_data["roof_id"] == roof_id, "imageURL"] = image_url
 
 
+def next_roof_id():
+    current_index: int = (
+        st.session_state["label_annotations"]
+        .loc[lambda df: df.roof_id == st.session_state["roof_id_selector"]]
+        .index
+    )
+    st.session_state["roof_id_selector"] = (
+        st.session_state["label_annotations"]
+        .loc[current_index + 1, "roof_id"]
+        .values[0]
+    )
+
+
+def previous_roof_id():
+    current_index: int = (
+        st.session_state["label_annotations"]
+        .loc[lambda df: df.roof_id == st.session_state["roof_id_selector"]]
+        .index
+    )
+    st.session_state["roof_id_selector"] = (
+        st.session_state["label_annotations"]
+        .loc[current_index - 1, "roof_id"]
+        .values[0]
+    )
+
+
 def obstacle_annotator_page():
     st.title(":mag: Obstacle Annotation Tool")
     st.write(
@@ -122,13 +148,28 @@ def obstacle_annotator_page():
 
         st.write("Choose a roof ID randomly...")
 
-        buf, st_rand, buf = st.columns((2, 1, 2))
+        buf, st_previous, st_rand, st_next, buf = st.columns((0.5, 1, 1, 1, 0.5))
+
+        st_previous.button(
+            "⬅️",
+            help="Load the previous roof ID",
+            on_click=previous_roof_id,
+            key="sidebar_previous_roof_id",
+        )
 
         st_rand.button(
             "🔀",
-            help="Get a random roof ID that was not labelled yet",
+            help="Load a random roof ID that was not labelled yet",
             on_click=utils.load_random_photo,
             args=(roofs_to_annotate,),
+            key="sidebar_random_roof_id",
+        )
+
+        st_next.button(
+            "➡️",
+            help="Load the next roof ID",
+            on_click=next_roof_id,
+            key="sidebar_next_roof_id",
         )
 
         # roof ID selector
@@ -152,25 +193,35 @@ def obstacle_annotator_page():
     # | Labelling Actions |
     # +-------------------+
 
-    st_roof_info, st_randomizer, buf, st_keep, st_drop, st_maybe, buf = st.columns(
-        (1.5, 1, 0.5, 1, 1, 1, 0.5)
+    (
+        buf,
+        st_previous,
+        st_randomizer,
+        st_next,
+        buf,
+        st_keep,
+        st_drop,
+        st_maybe,
+        buf,
+    ) = st.columns((0.5, 1, 1, 1, 0.5, 1, 1, 1, 0.5))
+
+    st_previous.button(
+        "⬅️",
+        help="Load the previous roof ID",
+        on_click=previous_roof_id,
+        key="previous_roof_id",
     )
-
-    with st_roof_info:
-        if chosen_roof_id not in full_annotations.roof_id:
-            st.info(f"Roof `{chosen_roof_id}` not annotated yet")
-        else:
-            label = full_annotations.loc[
-                lambda df: df["roof_id"] == chosen_roof_id, "label_annotation"
-            ].values[0]
-
-            st.warning(f"Roof `{chosen_roof_id}` already annotated as `{label}`")
 
     st_randomizer.button(
         "🔀",
         help="Load a random roof ID that was not labelled yet",
         on_click=utils.load_random_photo,
         args=(roofs_to_annotate,),
+        key="random_roof_id",
+    )
+
+    st_next.button(
+        "➡️", help="Load the next roof ID", on_click=next_roof_id, key="next_roof_id"
     )
 
     st_keep.button(
@@ -193,6 +244,15 @@ def obstacle_annotator_page():
         on_click=annotate_labels,
         args=("M", chosen_roof_id, st.session_state.label_annotations, photos_metadata),
     )
+
+    if chosen_roof_id not in full_annotations.roof_id.values:
+        st.info(f"Roof `{chosen_roof_id}` not annotated yet")
+    else:
+        label = full_annotations.loc[
+            lambda df: df["roof_id"] == chosen_roof_id, "label_annotation"
+        ].values[0]
+
+        st.warning(f"Roof `{chosen_roof_id}` already annotated as `{label}`")
 
     # +---------------+
     # | Plot the roof |
