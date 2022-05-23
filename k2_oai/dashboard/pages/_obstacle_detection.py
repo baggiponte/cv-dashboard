@@ -45,6 +45,10 @@ def annotate_hyperparameters(
     ] = drawing_technique
 
 
+def load_random_photo(roofs_list):
+    st.session_state["roof_id"] = np.random.choice(roofs_list)
+
+
 def obstacle_detection_page():
 
     # +-------------------------------------+
@@ -80,10 +84,10 @@ def obstacle_detection_page():
 
         st.markdown("---")
 
-    with st.expander("Click to see the list of photos"):
+    with st.expander(f"Click to see the photos in {chosen_folder!r}"):
         st.dataframe(dbx_photo_list)
 
-    with st.expander("Click to see the photos' metadata"):
+    with st.expander(f"Click to see the metadata of the photos in {chosen_folder!r}"):
         st.dataframe(photos_metadata)
 
     # +------------------------------------------+
@@ -127,7 +131,7 @@ def obstacle_detection_page():
 
         buf, st_rand, buf = st.columns((2, 1, 2))
 
-        st_rand.button("🔀", on_click=utils.load_random_photo, args=(roofs_to_label,))
+        st_rand.button("🔀", on_click=load_random_photo, args=(roofs_to_label,))
 
         # roof ID selector
         # ----------------
@@ -136,7 +140,7 @@ def obstacle_detection_page():
             "Roof identifier:",
             options=roofs_to_label,
             help="Identifier of the roof, whose label we want to inspect.",
-            key="roof_id_selector",
+            key="roof_id",
         )
 
         st.markdown("---")

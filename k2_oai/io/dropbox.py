@@ -8,7 +8,8 @@ import os
 import dropbox
 import pandas as pd
 from dotenv import load_dotenv
-from dropbox.exceptions import AuthError
+from dropbox.exceptions import ApiError, AuthError
+from dropbox.files import WriteMode
 
 load_dotenv()
 
@@ -165,7 +166,10 @@ def dropbox_list_contents_of(dropbox_app, dropbox_path):
 
 def dropbox_upload_file_to(dropbox_app, file_path_from, file_path_to):
     with open(file_path_from, "rb") as f:
-        dropbox_app.files_upload(f.read(), file_path_to)
+        try:
+            dropbox_app.files_upload(f.read(), file_path_to, mode=WriteMode.add)
+        except ApiError:
+            dropbox_app.files_upload(f.read(), file_path_to, mode=WriteMode.overwrite)
 
 
 def dropbox_download_from(dropbox_app, save_to, download_from):

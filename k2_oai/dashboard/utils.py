@@ -8,7 +8,6 @@ import os
 from datetime import datetime
 
 import dropbox
-import numpy as np
 import streamlit as st
 from dotenv import load_dotenv
 
@@ -40,7 +39,6 @@ __all__ = [
     "st_load_metadata",
     "st_load_geo_metadata",
     "st_load_annotations",
-    "load_random_photo",
 ]
 
 
@@ -242,10 +240,6 @@ def obstacle_detection_pipeline(
     if return_filtered_roof:
         return blobs, roof_with_bboxes, obstacles_coordinates, filtered_roof
     return blobs, roof_with_bboxes, obstacles_coordinates
-
-
-def load_random_photo(roofs_list):
-    st.session_state["roof_id_selector"] = np.random.choice(roofs_list)
 
 
 def save_annotations_to_dropbox(
