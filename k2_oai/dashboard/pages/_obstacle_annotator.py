@@ -28,7 +28,7 @@ def annotate_labels(marks, roof_id, photos_folder, photos_metadata):
             st.session_state["label_annotations"]
             .loc[lambda df: df.roof_id == roof_id]
             .assign(
-                annotation=";".join(marks) if marks else "Y",
+                annotation=marks,
                 imageURL=image_url,
                 photos_folder=photos_folder,
                 annotation_time=now,
@@ -40,13 +40,13 @@ def annotate_labels(marks, roof_id, photos_folder, photos_metadata):
             [
                 {
                     "roof_id": roof_id,
-                    "annotation": ";".join(marks) if marks else "Y",
+                    "annotation": marks,
                     "imageURL": image_url,
                     "photos_folder": photos_folder,
                     "annotation_time": now,
                 }
             ]
-        ).astype({"roof_id": int})
+        ).astype({"roof_id": int, "annotation": int})
 
         st.session_state["label_annotations"] = (
             pd.concat(
@@ -54,7 +54,7 @@ def annotate_labels(marks, roof_id, photos_folder, photos_metadata):
             )
             .sort_values("roof_id")
             .reset_index(drop=True)
-            .astype({"roof_id": int})
+            .astype({"roof_id": int, "annotation": int})
         )
 
 
@@ -135,7 +135,7 @@ def obstacle_annotator_page():
                 annotation=np.NaN,
                 annotation_time=np.NaN,
             )
-            .astype({"roof_id": int})
+            .astype({"roof_id": int, "annotation": int})
         )
 
     annotated_roofs = (
@@ -249,10 +249,10 @@ def obstacle_annotator_page():
         st_randomizer,
         st_next,
         buf,
-        st_annotations,
         st_mark,
+        st_annotations,
         st_save,
-    ) = st.columns((0.5, 1, 1, 1, 0.3, 4, 1, 1))
+    ) = st.columns((0.5, 1, 1, 1, 0.3, 1, 4, 1))
 
     st_previous.button(
         "⬅️",
@@ -278,20 +278,12 @@ def obstacle_annotator_page():
         key="next_roof_id",
     )
 
-    annotation_options = (
-        "Not a roof",
-        "Roof improperly cropped",
-        "Not an obstacle",
-        "Not all obstacles have been labelled",
-        "Labels are imprecise",
-        "Too small to see",
-    )
-
-    chosen_annotations = st_annotations.multiselect(
-        label="Annotate the photo:",
-        options=annotation_options,
-        default=None,
-        help="Mark all that apply",
+    chosen_annotations = st_annotations.radio(
+        label="Can the photo be used for training?",
+        options=[0, 1],
+        index=0,
+        help="0 means no, 1 means yes",
+        key="binary_annotation",
     )
 
     st_mark.button(
@@ -305,6 +297,21 @@ def obstacle_annotator_page():
             photos_metadata,
         ),
     )
+    # annotation_options = (
+    #     "Not a roof",
+    #     "Roof improperly cropped",
+    #     "Not an obstacle",
+    #     "Not all obstacles have been labelled",
+    #     "Labels are imprecise",
+    #     "Too small to see",
+    # )
+
+    # chosen_annotations = st_annotations.multiselect(
+    #     label="Annotate the photo:",
+    #     options=annotation_options,
+    #     default=None,
+    #     help="Mark all that apply",
+    # )
 
     with st_save:
         filename = (
@@ -323,7 +330,7 @@ def obstacle_annotator_page():
                 make_checkpoint,
             )
 
-    if chosen_roof_id in all_annotations.roof_id:
+    if chosen_roof_id in all_annotations.roof_id.values:
         st.info(f"Roof {chosen_roof_id} is already annotated")
     else:
         st.warning(f"Roof {chosen_roof_id} is not annotated")
