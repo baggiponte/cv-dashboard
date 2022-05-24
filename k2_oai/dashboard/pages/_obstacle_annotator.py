@@ -23,10 +23,10 @@ def annotate_labels(marks, roof_id, photos_folder, photos_metadata):
 
     now = datetime.now().strftime("%Y_%m_%d-%H_%M_%S")
 
-    if roof_id in st.session_state["label_annotations"].roof_id:
+    if roof_id in st.session_state["label_annotations"].roof_id.values:
         (
             st.session_state["label_annotations"]
-            .loc[lambda df: df.roof_id == roof_id]
+            .loc[lambda df: df["roof_id"] == roof_id]
             .assign(
                 annotation=marks,
                 imageURL=image_url,
@@ -35,7 +35,6 @@ def annotate_labels(marks, roof_id, photos_folder, photos_metadata):
             )
         )
     else:
-
         new_row = pd.DataFrame(
             [
                 {
@@ -52,9 +51,10 @@ def annotate_labels(marks, roof_id, photos_folder, photos_metadata):
             pd.concat(
                 [st.session_state["label_annotations"], new_row], ignore_index=True
             )
+            .astype({"roof_id": int, "annotation": int})
+            .drop_duplicates(subset=["roof_id"], keep="last")
             .sort_values("roof_id")
             .reset_index(drop=True)
-            .astype({"roof_id": int, "annotation": int})
         )
 
 
