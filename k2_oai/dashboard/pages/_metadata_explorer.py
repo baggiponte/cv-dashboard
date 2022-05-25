@@ -24,7 +24,7 @@ def metadata_explorer_page():
 
     with st.sidebar:
 
-        st.markdown("## :card_index_dividers: Data Sources")
+        st.markdown("## :open_file_folder: Photos Folder")
 
         # get options for `chosen_folder`
         photos_folders = sorted(

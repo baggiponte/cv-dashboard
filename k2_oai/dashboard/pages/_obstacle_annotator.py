@@ -84,7 +84,7 @@ def obstacle_annotator_page():
         # | Choose where to save the annotations |
         # +--------------------------------------+
 
-        st.markdown("### :pencil: Annotations Data")
+        st.markdown("## :pencil: Annotations Data")
 
         annotations_folder = sorted(
             utils.st_list_contents_of(

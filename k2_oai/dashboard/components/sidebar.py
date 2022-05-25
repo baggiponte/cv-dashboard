@@ -6,9 +6,7 @@ from k2_oai.io.dropbox_paths import DROPBOX_RAW_PHOTOS_ROOT
 
 def sidebar_chose_photo_folder(geo_metadata: bool = False):
 
-    st.markdown("## :card_index_dividers: Data Sources")
-
-    st.markdown("### :open_file_folder: Photos Folder")
+    st.markdown("## :open_file_folder: Photos Folder")
 
     # get options for `chosen_folder`
     photos_folders = sorted(
