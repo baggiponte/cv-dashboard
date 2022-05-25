@@ -45,7 +45,7 @@ def main():
             "Which interface would you like to use?",
             (
                 "Instructions",
-                "Data Explorer",
+                "Metadata Explorer",
                 "Obstacle Annotation Tool",
                 "Obstacle Detection",
             ),
@@ -61,7 +61,7 @@ def main():
             readme_text.empty()
             st.sidebar.markdown("___")
             pages.obstacle_annotator_page()
-        elif app_mode == "Data Explorer":
+        elif app_mode == "Metadata Explorer":
             readme_text.empty()
             st.sidebar.markdown("___")
             pages.metadata_explorer_page()

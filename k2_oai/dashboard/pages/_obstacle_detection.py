@@ -7,11 +7,8 @@ import matplotlib.pyplot as plt
 import numpy as np
 import streamlit as st
 
-from k2_oai.dashboard import utils
-from k2_oai.io.dropbox_paths import (
-    DROPBOX_HYPERPARAMETERS_PATH,
-    DROPBOX_RAW_PHOTOS_ROOT,
-)
+from k2_oai.dashboard import components, utils
+from k2_oai.io.dropbox_paths import DROPBOX_HYPERPARAM_ANNOTATIONS_PATH
 
 __all__ = ["obstacle_detection_page"]
 
@@ -62,33 +59,18 @@ def obstacle_detection_page():
         "You can also save hyperparametres you chose to a Dropbox file.",
     )
 
+    # +---------------------------------------------+
+    # | Load photos metadata from a selected folder |
+    # +---------------------------------------------+
+
     with st.sidebar:
-
-        st.subheader("Data Source")
-
-        # get options for `chosen_folder`
-        photos_folders = utils.st_list_contents_of(DROPBOX_RAW_PHOTOS_ROOT).item_name
-
-        chosen_folder = st.selectbox(
-            "Select the folder to load the photos from: ",
-            options=photos_folders,
-            index=0,
-        )
-
-        photos_metadata, dbx_photo_list = utils.st_load_photo_list_and_metadata(
-            photos_folder=chosen_folder,
-            photos_root_path=DROPBOX_RAW_PHOTOS_ROOT,
-        )
-
-        st.info(f"Available photos: {dbx_photo_list.shape[0]}")
+        (
+            chosen_folder,
+            photos_metadata,
+            photo_list,
+        ) = components.sidebar_chose_photo_folder()
 
         st.markdown("---")
-
-    with st.expander(f"Click to see the photos in {chosen_folder!r}"):
-        st.dataframe(dbx_photo_list)
-
-    with st.expander(f"Click to see the metadata of the photos in {chosen_folder!r}"):
-        st.dataframe(photos_metadata)
 
     # +------------------------------------------+
     # | Cache DataFrame to store hyperparameters |
@@ -333,5 +315,5 @@ def obstacle_detection_page():
         utils.save_annotations_to_dropbox(
             obstacles_hyperparameters.dropna(subset="sigma"),
             "obstacles-annotated_hyperparameters",
-            DROPBOX_HYPERPARAMETERS_PATH,
+            DROPBOX_HYPERPARAM_ANNOTATIONS_PATH,
         )

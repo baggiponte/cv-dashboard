@@ -10,9 +10,9 @@ import pandas as pd
 
 from k2_oai.io import dropbox as dbx
 from k2_oai.io.dropbox_paths import (
-    DROPBOX_ANNOTATIONS_PATH,
     DROPBOX_EXTERNAL_DATA_PATH,
-    DROPBOX_METADATA_PATH,
+    DROPBOX_LABEL_ANNOTATIONS_PATH,
+    DROPBOX_PHOTOS_METADATA_PATH,
 )
 from k2_oai.utils import draw_boundaries, rotate_and_crop_roof
 
@@ -60,7 +60,7 @@ def dbx_load_geodataframe(filename, dropbox_path, crs, dropbox_app):
 def dbx_load_metadata(dropbox_app):
     return dbx_load_dataframe(
         "join-roofs_images_obstacles.parquet",
-        dropbox_path=DROPBOX_METADATA_PATH,
+        dropbox_path=DROPBOX_PHOTOS_METADATA_PATH,
         dropbox_app=dropbox_app,
     )
 
@@ -82,7 +82,7 @@ def dbx_create_geo_metadata(dropbox_app):
 def dbx_load_geo_metadata(dropbox_app):
     return dbx_load_dataframe(
         "geometries-roofs_images_obstacles.parquet",
-        dropbox_path=DROPBOX_METADATA_PATH,
+        dropbox_path=DROPBOX_PHOTOS_METADATA_PATH,
         dropbox_app=dropbox_app,
     )
 
@@ -99,7 +99,7 @@ def dbx_load_earth(dropbox_app):
 def dbx_create_label_annotations(dropbox_app, num_checkpoints: int = 0):
 
     metadata_folder_contents = dbx.dropbox_list_contents_of(
-        dropbox_app, DROPBOX_ANNOTATIONS_PATH
+        dropbox_app, DROPBOX_LABEL_ANNOTATIONS_PATH
     )
 
     label_annotation_checkpoints = metadata_folder_contents.loc[
@@ -111,7 +111,7 @@ def dbx_create_label_annotations(dropbox_app, num_checkpoints: int = 0):
             :num_checkpoints
         ]
     dataframes = [
-        dbx_load_dataframe(file, DROPBOX_ANNOTATIONS_PATH, dropbox_app)
+        dbx_load_dataframe(file, DROPBOX_LABEL_ANNOTATIONS_PATH, dropbox_app)
         for file in label_annotation_checkpoints.item_name
     ]
 
@@ -127,7 +127,7 @@ def dbx_create_label_annotations(dropbox_app, num_checkpoints: int = 0):
     dbx.dropbox_upload_file_to(
         dropbox_app,
         "obstacles-labels_annotations.csv",
-        f"{DROPBOX_ANNOTATIONS_PATH}/obstacles-labels_annotations.csv",
+        f"{DROPBOX_LABEL_ANNOTATIONS_PATH}/obstacles-labels_annotations.csv",
     )
 
     os.remove("obstacles-labels_annotations.csv")
@@ -136,7 +136,7 @@ def dbx_create_label_annotations(dropbox_app, num_checkpoints: int = 0):
 def dbx_load_label_annotations(filename, dropbox_app):
     return dbx_load_dataframe(
         filename,
-        dropbox_path=DROPBOX_ANNOTATIONS_PATH,
+        dropbox_path=DROPBOX_LABEL_ANNOTATIONS_PATH,
         dropbox_app=dropbox_app,
     )
 
