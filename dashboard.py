@@ -2,7 +2,8 @@ import os
 
 import streamlit as st
 
-from k2_oai.dashboard import pages, utils
+from k2_oai.dashboard import pages
+from k2_oai.dashboard.components import login
 
 
 def main():
@@ -18,7 +19,7 @@ def main():
         if "DROPBOX_ACCESS_TOKEN" in os.environ:
             st.session_state["access_token"] = os.environ.get("DROPBOX_ACCESS_TOKEN")
         else:
-            st_oauth_text_boxes, oauth_result = utils.st_dropbox_oauth2_connect()
+            st_oauth_text_boxes, oauth_result = login.dropbox_oauth2_connect()
             if oauth_result is not None:
                 st.session_state["access_token"] = oauth_result.access_token
                 st.session_state["refresh_token"] = oauth_result.refresh_token

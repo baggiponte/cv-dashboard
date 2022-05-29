@@ -7,9 +7,7 @@ from __future__ import annotations
 import os
 from datetime import datetime
 
-import dropbox
 import streamlit as st
-from dotenv import load_dotenv
 
 from k2_oai.io import data_loader
 from k2_oai.io import dropbox as dbx
@@ -22,17 +20,7 @@ from k2_oai.obstacle_detection import (
 )
 from k2_oai.utils import draw_boundaries, rotate_and_crop_roof
 
-load_dotenv()
-
-_DROPBOX_NAMESPACE_ID = os.environ.get("DROPBOX_NAMESPACE_ID")
-_DROPBOX_USER_EMAIL = os.environ.get("DROPBOX_USER_MAIL")
-_DROPBOX_APP_KEY = os.environ.get("APP_KEY")
-_DROPBOX_APP_SECRET = os.environ.get("APP_SECRET")
-if "DROPBOX_ACCESS_TOKEN" in os.environ:
-    _DROPBOX_ACCESS_TOKEN = os.environ.get("DROPBOX_ACCESS_TOKEN")
-
 __all__ = [
-    "st_dropbox_oauth2_connect",
     "st_dropbox_connect",
     "st_list_contents_of",
     "st_load_dataframe",
@@ -40,36 +28,6 @@ __all__ = [
     "st_load_geo_metadata",
     "st_load_annotations",
 ]
-
-
-def st_dropbox_oauth2_connect(
-    dropbox_app_key=_DROPBOX_APP_KEY, dropbox_app_secret=_DROPBOX_APP_SECRET
-):
-    dropbox_oauth_flow = dropbox.DropboxOAuth2FlowNoRedirect(
-        dropbox_app_key,
-        dropbox_app_secret,
-        token_access_type="offline",
-    )
-
-    authorization_url = dropbox_oauth_flow.start()
-
-    placeholder = st.empty()
-
-    with placeholder.container():
-        st.title(":key: Dropbox Authentication")
-        st.markdown(f"1. Go to [this url]({authorization_url}).")
-        st.write('2. Click "Allow" (you might have to log in first).')
-        st.write("3. Copy the authorization code.")
-        st.write("4. Enter the authorization code here: ")
-        authorization_code = st.text_input("")
-
-    try:
-        complete_oauth_flow = dropbox_oauth_flow.finish(authorization_code)
-        return placeholder, complete_oauth_flow
-    except:  # noqa: E722
-        if authorization_code is not None and len(authorization_code):
-            st.error("Invalid authorization code!")
-        return placeholder, None
 
 
 @st.cache(allow_output_mutation=True)
@@ -271,15 +229,21 @@ def obstacle_detection_pipeline(
     return blobs, roof_with_bboxes, obstacles_coordinates
 
 
-def save_annotations_to_dropbox(
-    data_to_upload, filename, destination_folder, make_checkpoint=False
-):
+def make_filename(filename: str, use_checkpoints: bool = False):
+
+    if filename == "New Checkpoint":
+        filename = "checkpoint.csv"
+    elif not filename.endswith(".csv"):
+        filename = f"{filename}.csv"
+
+    if use_checkpoints:
+        return f"{datetime.now().strftime('%Y_%m_%d-%H_%M_%S')}-{filename}"
+    return filename
+
+
+def save_annotations_to_dropbox(data_to_upload, filename, destination_folder):
 
     dbx_app = st_dropbox_connect()
-
-    if make_checkpoint:
-        timestamp = datetime.now().replace(microsecond=0).strftime("%Y_%m_%d-%H_%M_%S")
-        filename = f"{timestamp}-{filename}"
 
     file_to_upload = f"/tmp/{filename}"
     destination_path = f"{destination_folder}/{filename}.csv"
