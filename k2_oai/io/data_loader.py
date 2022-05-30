@@ -14,7 +14,7 @@ from k2_oai.io.dropbox_paths import (
     DROPBOX_LABEL_ANNOTATIONS_PATH,
     DROPBOX_PHOTOS_METADATA_PATH,
 )
-from k2_oai.utils import draw_boundaries, rotate_and_crop_roof
+from k2_oai.utils import draw_labels, rotate_and_crop_roof
 
 __all__ = [
     "dbx_load_dataframe",
@@ -99,7 +99,7 @@ def dbx_load_earth(dropbox_app):
 def dbx_create_label_annotations(dropbox_app, num_checkpoints: int = 0):
 
     metadata_folder_contents = dbx.dropbox_list_contents_of(
-        dropbox_app, DROPBOX_LABEL_ANNOTATIONS_PATH
+        DROPBOX_LABEL_ANNOTATIONS_PATH, dropbox_app
     )
 
     label_annotation_checkpoints = metadata_folder_contents.loc[
@@ -142,19 +142,14 @@ def dbx_load_label_annotations(filename, dropbox_app):
 
 
 def dbx_load_photo(
-    photo_name, dropbox_folder, dropbox_app, greyscale_only=False, bgr_only=False
+    photo_name, dropbox_folder, dropbox_app, bgr_only=False, greyscale_only=False
 ):
+    if greyscale_only and bgr_only:
+        raise ValueError("`bgr_only` and `greyscale_only` cannot be both True")
 
     dropbox_path = f"{dropbox_folder}/{photo_name}"
 
     dropbox_app.files_download_to_file(photo_name, dropbox_path)
-
-    if greyscale_only:
-        greyscale_image = cv.imread(photo_name, 0)
-
-        os.remove(photo_name)
-
-        return greyscale_image
 
     if bgr_only:
         bgr_image = cv.imread(photo_name, 1)
@@ -162,6 +157,13 @@ def dbx_load_photo(
         os.remove(photo_name)
 
         return bgr_image
+
+    if greyscale_only:
+        greyscale_image = cv.imread(photo_name, 0)
+
+        os.remove(photo_name)
+
+        return greyscale_image
 
     bgr_image = cv.imread(photo_name, 1)
     greyscale_image = cv.imread(photo_name, 0)
@@ -176,15 +178,15 @@ def dbx_load_photos_from_roof_id(
     photos_metadata,
     dropbox_path,
     dropbox_app,
-    greyscale_only: bool = False,
     bgr_only: bool = False,
+    greyscale_only: bool = False,
 ):
     photo_name = photos_metadata.loc[
         lambda df: df["roof_id"] == roof_id, "imageURL"
     ].values[0]
 
     return dbx_load_photo(
-        photo_name, dropbox_path, dropbox_app, greyscale_only, bgr_only
+        photo_name, dropbox_path, dropbox_app, bgr_only, greyscale_only
     )
 
 
@@ -226,7 +228,7 @@ def load_and_crop_roof_from_roof_id(
             greyscale_only=greyscale_only,
         )
         if with_labels:
-            labelled_roof = draw_boundaries(
+            labelled_roof = draw_labels(
                 greyscale_image, roof_px_coord, obstacles_px_coord
             )
             return rotate_and_crop_roof(labelled_roof, roof_px_coord)
@@ -237,9 +239,7 @@ def load_and_crop_roof_from_roof_id(
             roof_id, photos_metadata, dropbox_path, dropbox_app, bgr_only=bgr_only
         )
         if with_labels:
-            labelled_roof = draw_boundaries(
-                bgr_image, roof_px_coord, obstacles_px_coord
-            )
+            labelled_roof = draw_labels(bgr_image, roof_px_coord, obstacles_px_coord)
             return rotate_and_crop_roof(labelled_roof, roof_px_coord)
         return rotate_and_crop_roof(bgr_image, roof_px_coord)
 
@@ -247,7 +247,7 @@ def load_and_crop_roof_from_roof_id(
         roof_id, photos_metadata, dropbox_path, dropbox_app
     )
 
-    k2_labelled_image = draw_boundaries(bgr_image, roof_px_coord, obstacles_px_coord)
+    k2_labelled_image = draw_labels(bgr_image, roof_px_coord, obstacles_px_coord)
     labelled_roof = rotate_and_crop_roof(k2_labelled_image, roof_px_coord)
     greyscale_roof = rotate_and_crop_roof(greyscale_image, roof_px_coord)
 
