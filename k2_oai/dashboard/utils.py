@@ -18,7 +18,7 @@ from k2_oai.obstacle_detection import (
     filtering_step,
     morphological_opening_step,
 )
-from k2_oai.utils import draw_boundaries, rotate_and_crop_roof
+from k2_oai.utils import draw_labels, rotate_and_crop_roof
 
 __all__ = [
     "st_dropbox_connect",
@@ -40,57 +40,47 @@ def st_dropbox_connect():
 
 
 @st.cache
-def st_list_contents_of(folder_name, dropbox_app=None):
-    dbx_app = dropbox_app or st_dropbox_connect()
-    return dbx.dropbox_list_contents_of(dbx_app, folder_name)
+def st_list_contents_of(folder_name):
+    dbx_app = st_dropbox_connect()
+    return dbx.dropbox_list_contents_of(folder_name, dbx_app)
 
 
 @st.cache
-def st_load_dataframe(filename, dropbox_path, dropbox_app=None):
-    dbx_app = dropbox_app or st_dropbox_connect()
+def st_load_dataframe(filename, dropbox_path):
+    dbx_app = st_dropbox_connect()
     return data_loader.dbx_load_dataframe(filename, dropbox_path, dbx_app)
 
 
 @st.cache
-def st_load_metadata(dropbox_app=None):
-    dbx_app = dropbox_app or st_dropbox_connect()
+def st_load_metadata():
+    dbx_app = st_dropbox_connect()
     return data_loader.dbx_load_metadata(dbx_app)
 
 
 @st.cache
-def st_load_geo_metadata(dropbox_app=None):
-    dbx_app = dropbox_app or st_dropbox_connect()
+def st_load_geo_metadata():
+    dbx_app = st_dropbox_connect()
     return data_loader.dbx_load_geo_metadata(dbx_app)
 
 
 @st.cache(allow_output_mutation=True)
-def st_load_earth(dropbox_app=None):
-    dbx_app = dropbox_app or st_dropbox_connect()
-    return data_loader.dbx_load_earth(dbx_app)
-
-
-@st.cache(allow_output_mutation=True)
-def st_load_annotations(filename, dropbox_app=None):
-    dbx_app = dropbox_app or st_dropbox_connect()
+def st_load_annotations(filename):
+    dbx_app = st_dropbox_connect()
     return data_loader.dbx_load_label_annotations(filename, dbx_app)
 
 
 @st.cache(allow_output_mutation=True)
-def st_load_photo_list(photos_folder_name, photos_folder_path, dropbox_app=None):
-
-    dbx_app = dropbox_app or st_dropbox_connect()
+def st_load_photo_list(photos_folder_name, photos_folder_path):
 
     index_file = f"index-{photos_folder_name}.csv"
     photos_folder_contents = st_list_contents_of(photos_folder_path).item_name.values
 
     if index_file in photos_folder_contents:
         return st_load_dataframe(
-            f"index-{photos_folder_name}.csv", photos_folder_path, dbx_app
+            f"index-{photos_folder_name}.csv", photos_folder_path
         ).item_name
     else:
-        return st_list_contents_of(
-            folder_name=photos_folder_path, dropbox_app=dbx_app
-        ).item_name
+        return st_list_contents_of(folder_name=photos_folder_path).item_name
 
 
 @st.cache
@@ -98,21 +88,18 @@ def st_load_photo_list_and_metadata(
     photos_folder,
     photos_root_path,
     geo_metadata: bool = False,
-    dropbox_app=None,
 ):
     photos_path = f"{photos_root_path or DROPBOX_RAW_PHOTOS_ROOT}"
 
-    dbx_app = dropbox_app or st_dropbox_connect()
-
     if geo_metadata:
-        photos_metadata = st_load_geo_metadata(dropbox_app=dbx_app)
+        photos_metadata = st_load_geo_metadata()
     else:
-        photos_metadata = st_load_metadata(dropbox_app=dbx_app)
+        photos_metadata = st_load_metadata()
 
     if photos_folder is None:
         return photos_metadata, photos_metadata.imageURL
 
-    photos_list = st_load_photo_list(photos_folder, photos_path, dbx_app)
+    photos_list = st_load_photo_list(photos_folder, photos_path)
 
     available_photos_metadata = photos_metadata.loc[
         photos_metadata.imageURL.isin(photos_list)
@@ -125,23 +112,28 @@ def st_load_photo_list_and_metadata(
 def st_load_photo(
     photo_name,
     folder_name,
-    dropbox_app=None,
     greyscale_only: bool = False,
 ):
-    dbx_app = dropbox_app or st_dropbox_connect()
+    dbx_app = st_dropbox_connect()
     dbx_path = f"{DROPBOX_RAW_PHOTOS_ROOT}/{folder_name}"
-    return data_loader.dbx_load_photo(photo_name, dbx_path, dbx_app, greyscale_only)
+    return data_loader.dbx_load_photo(
+        photo_name, dbx_path, dbx_app, greyscale_only=greyscale_only
+    )
 
 
 @st.cache(allow_output_mutation=True)
 def st_load_photo_from_roof_id(
-    roof_id, photos_metadata, chosen_folder, dropbox_app=None, greyscale_only=False
+    roof_id,
+    photos_metadata,
+    chosen_folder,
+    bgr_only=False,
+    greyscale_only=False,
 ):
-    dbx_app = dropbox_app or st_dropbox_connect()
+    dbx_app = st_dropbox_connect()
     dbx_path = f"{DROPBOX_RAW_PHOTOS_ROOT}/{chosen_folder}"
 
     return data_loader.dbx_load_photos_from_roof_id(
-        roof_id, photos_metadata, dbx_path, dbx_app, greyscale_only
+        roof_id, photos_metadata, dbx_path, dbx_app, bgr_only, greyscale_only
     )
 
 
@@ -161,32 +153,31 @@ def get_coordinates_from_roof_id(roof_id, photos_metadata) -> tuple[str, list[st
     return roof_px_coordinates, obstacles_px_coordinates
 
 
-def load_and_crop_roof_from_roof_id(
+def st_load_photo_and_roof(
     roof_id,
     photos_metadata,
-    dropbox_path,
-    dropbox_app=None,
-    greyscale_only: bool = False,
+    chosen_folder,
+    as_greyscale: bool = False,
 ):
+    if as_greyscale:
+        photo = st_load_photo_from_roof_id(
+            roof_id, photos_metadata, chosen_folder, greyscale_only=True
+        )
+    else:
+        photo = st_load_photo_from_roof_id(
+            roof_id, photos_metadata, chosen_folder, bgr_only=True
+        )
+
     roof_px_coord, obstacles_px_coord = get_coordinates_from_roof_id(
         roof_id, photos_metadata
     )
 
-    if greyscale_only:
-        greyscale_image = st_load_photo_from_roof_id(
-            roof_id, photos_metadata, dropbox_path, dropbox_app, greyscale_only
-        )
-        return rotate_and_crop_roof(greyscale_image, roof_px_coord)
+    roof = rotate_and_crop_roof(photo, roof_px_coord)
 
-    bgr_image, greyscale_image = st_load_photo_from_roof_id(
-        roof_id, photos_metadata, dropbox_path, dropbox_app
-    )
+    labelled_photo = draw_labels(photo, roof_px_coord, obstacles_px_coord)
+    labelled_roof = rotate_and_crop_roof(labelled_photo, roof_px_coord)
 
-    k2_labelled_image = draw_boundaries(bgr_image, roof_px_coord, obstacles_px_coord)
-    bgr_roof = rotate_and_crop_roof(k2_labelled_image, roof_px_coord)
-    greyscale_roof = rotate_and_crop_roof(greyscale_image, roof_px_coord)
-
-    return k2_labelled_image, bgr_roof, greyscale_roof
+    return photo, roof, labelled_photo, labelled_roof
 
 
 def obstacle_detection_pipeline(
