@@ -8,14 +8,14 @@ from __future__ import annotations
 
 import cv2 as cv
 import numpy as np
-from numpy.core.multiarray import ndarray
+from numpy import ndarray
 
 from k2_oai.utils._parsers import parse_str_as_coordinates
 
 __all__ = [
     "read_image_from_bytestring",
     "pad_image",
-    "draw_boundaries",
+    "draw_labels",
     "rotate_and_crop_roof",
 ]
 
@@ -83,7 +83,7 @@ def pad_image(
     return padded_image, (margin_h, margin_w)
 
 
-def draw_boundaries(
+def draw_labels(
     input_image: ndarray,
     roof_coordinates: str | ndarray,
     obstacle_coordinates: str | list[str] | None,
@@ -105,15 +105,17 @@ def draw_boundaries(
         Image with labels drawn.
     """
 
-    points: np.array = parse_str_as_coordinates(roof_coordinates).reshape((-1, 1, 2))
-    result: np.ndarray = cv.polylines(input_image, [points], True, (0, 0, 255), 2)
+    target_image: ndarray = input_image.copy()
+
+    points: ndarray = parse_str_as_coordinates(roof_coordinates).reshape((-1, 1, 2))
+    result: ndarray = cv.polylines(target_image, [points], True, (0, 0, 255), 2)
 
     if obstacle_coordinates is None:
         return result
 
     for obst in obstacle_coordinates:
-        points: np.array = parse_str_as_coordinates(obst).reshape((-1, 1, 2))
-        result: np.array = cv.polylines(result, [points], True, (255, 0, 0), 2)
+        points: ndarray = parse_str_as_coordinates(obst).reshape((-1, 1, 2))
+        result: ndarray = cv.polylines(result, [points], True, (255, 0, 0), 2)
 
     return result
 
