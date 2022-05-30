@@ -144,7 +144,7 @@ def _parse_dropbox_folder_content(folder_content):
     return files_list
 
 
-def dropbox_list_contents_of(dropbox_app, dropbox_path):
+def dropbox_list_contents_of(dropbox_path, dropbox_app):
     """Return a Pandas dataframe of files in a given Dropbox folder path in the Apps
     directory.
     """
