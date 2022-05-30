@@ -96,9 +96,8 @@ def obstacle_annotator_page():
         .roof_id.values
     )
 
-    roofs_left_to_annotate = photos_metadata.loc[
-        lambda df: ~df.roof_id.isin(annotated_roofs),
-        "roof_id",
+    roofs_left_to_annotate = photos_metadata.roof_id.loc[
+        lambda df: ~df.isin(annotated_roofs)
     ].unique()
 
     if chosen_annotations_file == "New Checkpoint":
@@ -108,8 +107,8 @@ def obstacle_annotator_page():
     else:
         existing_annotations = utils.st_load_annotations(chosen_annotations_file)
 
-        roofs_left_to_annotate = photos_metadata.loc[
-            lambda df: ~df.roof_id.isin(existing_annotations.roof_id), "roof_id"
+        roofs_left_to_annotate = photos_metadata.roof_id.loc[
+            lambda df: ~df.isin(existing_annotations.roof_id.unique())
         ].unique()
 
         all_annotations = (
@@ -140,8 +139,10 @@ def obstacle_annotator_page():
     with st.sidebar:
         chosen_roof_id = buttons.choose_roof_id(available_roofs, roofs_left_to_annotate)
 
-    k2_labelled_image, bgr_roof, _ = utils.load_and_crop_roof_from_roof_id(
-        int(chosen_roof_id), photos_metadata, chosen_folder
+    photo, roof, labelled_photo, labelled_roof = utils.st_load_photo_and_roof(
+        int(chosen_roof_id),
+        photos_metadata,
+        chosen_folder,
     )
 
     # +-------------------+
@@ -191,21 +192,35 @@ def obstacle_annotator_page():
     # | Plot the roof |
     # +---------------+
 
-    st_roof_photo, st_full_photo = st.columns(2)
+    st_labelled, st_not_labelled = st.columns(2)
 
-    with st_roof_photo:
+    with st_labelled:
         st.image(
-            bgr_roof,
+            labelled_roof,
             use_column_width=True,
-            channels="BGRA",
-            caption="Roof with database labels",
+            channels="BGR",
+            caption="Labelled Roof",
         )
 
-    with st_full_photo:
         st.image(
-            k2_labelled_image,
+            labelled_photo,
             use_column_width=True,
-            channels="BGRA",
+            channels="BGR",
+            caption="Cropped roof",
+        )
+
+    with st_not_labelled:
+        st.image(
+            roof,
+            use_column_width=True,
+            channels="BGR",
+            caption="Original image, labelled",
+        )
+
+        st.image(
+            photo,
+            use_column_width=True,
+            channels="BGR",
             caption="Original image",
         )
 
