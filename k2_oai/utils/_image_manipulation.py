@@ -161,7 +161,7 @@ def rotate_and_crop_roof(input_image: ndarray, roof_coordinates: str) -> ndarray
         im_affine = cv.warpAffine(
             im_alpha,
             rotation_matrix,
-            im_alpha.shape[0:2],
+            (im_alpha.shape[0]*2, im_alpha.shape[1]*2),
             cv.INTER_LINEAR,
             cv.BORDER_CONSTANT,
         )
