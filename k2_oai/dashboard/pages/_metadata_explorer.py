@@ -44,7 +44,6 @@ def metadata_explorer_page():
 
         photos_metadata, photo_list = utils.st_load_photo_list_and_metadata(
             photos_folder=chosen_folder,
-            photos_root_path=DROPBOX_RAW_PHOTOS_ROOT,
             geo_metadata=True,
         )
 
