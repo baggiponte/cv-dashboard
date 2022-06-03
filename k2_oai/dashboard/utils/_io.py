@@ -191,9 +191,9 @@ def st_load_photo_and_roof(
         roof_id, photos_metadata
     )
 
-    roof = rotate_and_crop_roof(photo, roof_px_coord)
-
     labelled_photo = draw_labels(photo, roof_px_coord, obstacles_px_coord)
+
+    roof = rotate_and_crop_roof(photo, roof_px_coord)
     labelled_roof = rotate_and_crop_roof(labelled_photo, roof_px_coord)
 
     return photo, roof, labelled_photo, labelled_roof

@@ -104,20 +104,54 @@ def draw_labels(
     ndarray
         Image with labels drawn.
     """
-
-    target_image: ndarray = input_image.copy()
-
-    points: ndarray = parse_str_as_coordinates(roof_coordinates).reshape((-1, 1, 2))
-    result: ndarray = cv.polylines(target_image, [points], True, (0, 0, 255), 2)
+    target_image = input_image.copy()
 
     if obstacle_coordinates is None:
-        return result
+        return target_image
 
-    for obst in obstacle_coordinates:
-        points: ndarray = parse_str_as_coordinates(obst).reshape((-1, 1, 2))
-        result: ndarray = cv.polylines(result, [points], True, (255, 0, 0), 2)
+    coord = parse_str_as_coordinates(
+        roof_coordinates, dtype="int32", sort_coordinates=True
+    )
 
-    return result
+    # rectangular roof
+    if len(coord) == 4:
+        rotation_matrix = _compute_rotation_matrix(coord)
+        center = coord[0]
+
+        for obst in obstacle_coordinates:
+            points_obs: np.array = parse_str_as_coordinates(obst)
+            obst_vertex = len(points_obs)
+            pts1 = np.hstack((points_obs, np.ones((obst_vertex, 1))))
+            pts_rotated = np.matmul(rotation_matrix, np.transpose(pts1))
+            offset = np.transpose(np.tile(center, (obst_vertex, 1)))
+            pts_new = np.subtract(pts_rotated, offset).astype(int)
+
+            pts_new = np.transpose(pts_new)
+            cv.polylines(
+                target_image, [pts_new], True, (255, 0, 0, 255), 1, lineType=cv.LINE_4
+            )
+
+    # polygonal roof
+    else:
+        for obst in obstacle_coordinates:
+            points: np.array = parse_str_as_coordinates(obst).reshape((-1, 1, 2))
+
+            top_left = np.min(coord, axis=0)
+            points_list = []
+            for pts in points:
+                points_list.append(np.subtract(pts, top_left))
+
+            points_offset = np.array(points_list).reshape((-1, 1, 2))
+            cv.polylines(
+                target_image,
+                [points_offset],
+                True,
+                (255, 0, 0, 255),
+                1,
+                lineType=cv.LINE_4,
+            )
+
+    return target_image
 
 
 def _compute_rotation_matrix(coordinates):
@@ -164,7 +198,7 @@ def rotate_and_crop_roof(input_image: ndarray, roof_coordinates: str) -> ndarray
         im_affine = cv.warpAffine(
             im_alpha,
             rotation_matrix,
-            im_alpha.shape[0:2],
+            (im_alpha.shape[0] * 2, im_alpha.shape[1] * 2),
             cv.INTER_LINEAR,
             cv.BORDER_CONSTANT,
         )
