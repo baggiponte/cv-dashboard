@@ -21,6 +21,7 @@ from k2_oai.obstacle_detection import (
     morphological_opening_step,
 )
 from k2_oai.utils import draw_boundaries, rotate_and_crop_roof
+from k2_oai.utils._image_manipulation import draw_obstacles
 
 load_dotenv()
 
@@ -225,7 +226,10 @@ def load_and_crop_roof_from_roof_id(
     )
 
     k2_labelled_image = draw_boundaries(bgr_image, roof_px_coord, obstacles_px_coord)
-    bgr_roof = rotate_and_crop_roof(k2_labelled_image, roof_px_coord)
+
+    cropped_image = rotate_and_crop_roof(bgr_image, roof_px_coord)
+    bgr_roof = draw_obstacles(cropped_image, roof_px_coord, obstacles_px_coord)
+    
     greyscale_roof = rotate_and_crop_roof(greyscale_image, roof_px_coord)
 
     return k2_labelled_image, bgr_roof, greyscale_roof

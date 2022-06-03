@@ -104,18 +104,81 @@ def draw_boundaries(
     ndarray
         Image with labels drawn.
     """
+    target_image = input_image.copy()
 
     points: np.array = parse_str_as_coordinates(roof_coordinates).reshape((-1, 1, 2))
-    result: np.ndarray = cv.polylines(input_image, [points], True, (0, 0, 255), 2)
+    result: np.ndarray = cv.polylines(target_image, [points], True, (0, 0, 255), 2)
 
     if obstacle_coordinates is None:
         return result
 
     for obst in obstacle_coordinates:
         points: np.array = parse_str_as_coordinates(obst).reshape((-1, 1, 2))
-        result: np.array = cv.polylines(result, [points], True, (255, 0, 0), 2)
+        result: np.array = cv.polylines(target_image, [points], True, (255, 0, 0), 2)
 
     return result
+
+
+def draw_obstacles(
+    input_image: ndarray,
+    roof_coordinates: str | ndarray,
+    obstacle_coordinates: str | list[str] | None,
+) -> ndarray:
+    """Draws obstacle labels on the input image from their coordinates.
+
+    Parameters
+    ----------
+    input_image : ndarray
+        Input image.
+    roof_coordinates : str or ndarray
+        Roof coordinates, either as string or list of lists of integers.
+    obstacle_coordinates : str or ndarray or None (default: None)
+        Obstacle coordinates. Can be None if there are no obstacles. Defaults to None.
+
+    Returns
+    -------
+    ndarray
+        Image with labels drawn.
+    """
+    target_image = input_image.copy()
+ 
+    if obstacle_coordinates is None:
+        return target_image
+
+    coord = parse_str_as_coordinates(
+        roof_coordinates, dtype="int32", sort_coordinates=True
+    )
+
+    # rectangular roof
+    if len(coord) == 4:
+        rotation_matrix = _compute_rotation_matrix(coord)
+        center = coord[0]
+
+        for obst in obstacle_coordinates:
+            points_obs: np.array = parse_str_as_coordinates(obst)
+            obst_vertex = len(points_obs)
+            pts1 = np.hstack((points_obs, np.ones((obst_vertex, 1))))
+            pts_rotated = np.matmul(rotation_matrix, np.transpose(pts1))
+            offset = np.transpose(np.tile(center, (obst_vertex, 1)))
+            pts_new = np.subtract(pts_rotated, offset).astype(int)
+
+            pts_new = np.transpose(pts_new)
+            cv.polylines(target_image,[pts_new], True, (255,0,0,255), 1, lineType=cv.LINE_4)
+
+    # polygonal roof
+    else:
+        for obst in obstacle_coordinates:
+            points: np.array = parse_str_as_coordinates(obst).reshape((-1, 1, 2))
+            
+            top_left = np.min(coord, axis=0)
+            points_list = []
+            for pts in points:
+                points_list.append(np.subtract(pts, top_left))
+
+            points_offset = np.array(points_list).reshape((-1, 1, 2))
+            cv.polylines(target_image, [points_offset], True, (255, 0, 0, 255), 1, lineType=cv.LINE_4)
+
+    return target_image
 
 
 def _compute_rotation_matrix(coordinates):
