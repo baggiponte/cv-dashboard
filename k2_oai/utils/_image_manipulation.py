@@ -147,8 +147,9 @@ def rotate_and_crop_roof(input_image: ndarray, roof_coordinates: str) -> ndarray
     ndarray
         The rotated and cropped roof.
     """
+    # dont'change dtype
     coord = parse_str_as_coordinates(
-        roof_coordinates, dtype=np.int8, sort_coordinates=True
+        roof_coordinates, dtype="int32", sort_coordinates=True
     )
 
     if len(input_image.shape) < 3:
@@ -177,13 +178,15 @@ def rotate_and_crop_roof(input_image: ndarray, roof_coordinates: str) -> ndarray
             dist_y = np.linalg.norm(coord[2] - coord[0]).astype(int)
             dist_x = np.linalg.norm(coord[1] - coord[0]).astype(int)
 
-        im_result = im_affine[
+        return im_affine[
             coord[0][1] : coord[0][1] + dist_y, coord[0][0] : coord[0][0] + dist_x, :
         ]
 
     # polygonal roofs
     else:
-        coord = parse_str_as_coordinates(roof_coordinates, sort_coordinates=False)
+        coord = parse_str_as_coordinates(
+            roof_coordinates, dtype="int32", sort_coordinates=False
+        )
         mask = np.zeros(input_image.shape[0:2], dtype="uint8")
 
         pts = np.array(coord, np.int8).reshape((-1, 1, 2))
@@ -195,8 +198,6 @@ def rotate_and_crop_roof(input_image: ndarray, roof_coordinates: str) -> ndarray
         bot_right = np.max(pts, axis=0)
         top_left = np.min(pts, axis=0)
 
-        im_result = im_alpha[
+        return im_alpha[
             top_left[0][1] : bot_right[0][1], top_left[0][0] : bot_right[0][0], :
         ]
-
-    return im_result

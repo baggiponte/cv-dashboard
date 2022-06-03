@@ -16,7 +16,7 @@ __all__ = [
 
 
 def parse_str_as_coordinates(
-    string: str, dtype=np.int8, sort_coordinates: bool = False
+    string: str, dtype=np.int32, sort_coordinates: bool = False
 ) -> ndarray:
     """Parses a string of coordinates into a list of lists of strings.
     Parameters
