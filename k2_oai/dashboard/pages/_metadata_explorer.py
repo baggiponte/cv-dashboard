@@ -27,7 +27,7 @@ def metadata_explorer_page():
 
         roofs_metadata = obstacles_metadata.drop_duplicates(subset="roof_id")
 
-        sidebar.obstacles_counts(obstacles_metadata, photos_list)
+        sidebar.count_duplicates(obstacles_metadata, photos_list)
 
     # +---------------+
     # | Zoom Levels   |

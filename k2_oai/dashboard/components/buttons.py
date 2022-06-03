@@ -28,7 +28,9 @@ def _change_roof_id(how: str, roofs_list):
         raise ValueError(f"Invalid `how`: {how}. Must be `next` or `previous`.")
 
 
-def choose_roof_id(roofs_list, roofs_left_to_annotate):
+def choose_roof_id(metadata, roofs_left_to_annotate):
+
+    roofs_list = metadata.roof_id.unique()
 
     st.markdown("## :house: Roof identifier")
 

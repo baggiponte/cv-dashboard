@@ -39,7 +39,6 @@ def main():
             "Which interface would you like to use?",
             options=pages_options.keys(),
         )
-        st.sidebar.markdown("___")
 
         pages_options[app_mode]()
 

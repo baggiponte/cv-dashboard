@@ -5,25 +5,18 @@ Common utilities for dashboard mode pages.
 from __future__ import annotations
 
 import os
-from datetime import datetime
 
 import streamlit as st
 
 from k2_oai.io import data_loader
 from k2_oai.io import dropbox as dbx
 from k2_oai.io.dropbox_paths import DROPBOX_RAW_PHOTOS_ROOT
-from k2_oai.obstacle_detection import (
-    binarization_step,
-    detect_obstacles,
-    filtering_step,
-    morphological_opening_step,
-)
 from k2_oai.utils import draw_labels, rotate_and_crop_roof
 
 __all__ = [
     "st_dropbox_connect",
     "st_listdir",
-    "no_cache_st_listdir",
+    "st_listdir_no_cache",
     "st_load_dataframe",
     "st_load_metadata",
     "st_load_geo_metadata",
@@ -33,6 +26,7 @@ __all__ = [
     "st_load_photo",
     "st_load_photo_from_roof_id",
     "st_load_photo_and_roof",
+    "st_save_annotations",
 ]
 
 
@@ -51,7 +45,7 @@ def st_listdir(path):
     return dbx.dropbox_listdir(path, dbx_app)
 
 
-def no_cache_st_listdir(path):
+def st_listdir_no_cache(path):
     """No cache version of st_listdir. It's meant to be used in streamlit components
     where you want to reload the list of files. In this case, the list will be sensitive
     to changes in the dropbox folders which will be reflected immediately. Normally,
@@ -205,64 +199,12 @@ def st_load_photo_and_roof(
     return photo, roof, labelled_photo, labelled_roof
 
 
-def obstacle_detection_pipeline(
-    greyscale_roof,
-    sigma,
-    filtering_method,
-    binarization_method,
-    blocksize,
-    tolerance,
-    boundary_type,
-    return_filtered_roof: bool = False,
-):
-
-    filtered_roof = filtering_step(greyscale_roof, sigma, filtering_method.lower())
-
-    if binarization_method == "Simple":
-        binarized_roof = binarization_step(filtered_roof, method="s")
-    elif binarization_method == "Adaptive":
-        binarized_roof = binarization_step(
-            filtered_roof, method="a", adaptive_kernel_size=blocksize
-        )
-    else:
-        binarized_roof = binarization_step(
-            filtered_roof, method="c", composite_tolerance=tolerance
-        )
-
-    blurred_roof = morphological_opening_step(binarized_roof)
-
-    boundary_type = "box" if boundary_type == "Bounding Box" else "polygon"
-
-    blobs, roof_with_bboxes, obstacles_coordinates = detect_obstacles(
-        blurred_roof=blurred_roof,
-        source_image=greyscale_roof,
-        box_or_polygon=boundary_type,
-        min_area="auto",
-    )
-
-    if return_filtered_roof:
-        return blobs, roof_with_bboxes, obstacles_coordinates, filtered_roof
-    return blobs, roof_with_bboxes, obstacles_coordinates
-
-
-def make_filename(filename: str, use_checkpoints: bool = False):
-
-    if filename == "New Checkpoint":
-        filename = "checkpoint.csv"
-    elif not filename.endswith(".csv"):
-        filename = f"{filename}.csv"
-
-    if use_checkpoints:
-        return f"{datetime.now().strftime('%Y_%m_%d-%H_%M_%S')}-{filename}"
-    return filename
-
-
-def save_annotations_to_dropbox(data_to_upload, filename, destination_folder):
+def st_save_annotations(data_to_upload, filename, destination_folder):
 
     dbx_app = st_dropbox_connect()
 
     file_to_upload = f"/tmp/{filename}"
-    destination_path = f"{destination_folder}/{filename}.csv"
+    destination_path = f"{destination_folder}/{filename}"
 
     data_to_upload.to_csv(file_to_upload, index=False)
 
