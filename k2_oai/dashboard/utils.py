@@ -23,10 +23,16 @@ from k2_oai.utils import draw_labels, rotate_and_crop_roof
 __all__ = [
     "st_dropbox_connect",
     "st_listdir",
+    "no_cache_st_listdir",
     "st_load_dataframe",
     "st_load_metadata",
     "st_load_geo_metadata",
     "st_load_annotations",
+    "st_load_photo_list",
+    "st_load_photo_list_and_metadata",
+    "st_load_photo",
+    "st_load_photo_from_roof_id",
+    "st_load_photo_and_roof",
 ]
 
 
@@ -46,6 +52,22 @@ def st_listdir(path):
 
 
 def no_cache_st_listdir(path):
+    """No cache version of st_listdir. It's meant to be used in streamlit components
+    where you want to reload the list of files. In this case, the list will be sensitive
+    to changes in the dropbox folders which will be reflected immediately. Normally,
+    this would only have been possible after refreshing the cache (i.e. by re-running
+    the whole application).
+
+    Parameters
+    ----------
+    path
+        Path to the folder to list.
+
+    Returns
+    -------
+    DataFrame
+        DataFrame containing the list of files in the folder and some metadata.
+    """
     dbx_app = st_dropbox_connect()
     return dbx.dropbox_listdir(path, dbx_app)
 
