@@ -127,7 +127,7 @@ def st_load_photo(
 @st.cache(allow_output_mutation=True)
 def st_load_photo_from_roof_id(
     roof_id,
-    photos_metadata,
+    metadata,
     chosen_folder,
     bgr_only=False,
     greyscale_only=False,
@@ -136,7 +136,7 @@ def st_load_photo_from_roof_id(
     dbx_path = f"{DROPBOX_RAW_PHOTOS_ROOT}/{chosen_folder}"
 
     return data_loader.dbx_load_photos_from_roof_id(
-        roof_id, photos_metadata, dbx_path, dbx_app, bgr_only, greyscale_only
+        roof_id, metadata, dbx_path, dbx_app, bgr_only, greyscale_only
     )
 
 

@@ -1,6 +1,6 @@
 """
 Dashboard mode to explore the OpenCV pipeline for obstacle detection and annotate the
-hyperparameters of each photo
+hyperparameters of each _photo
 """
 
 import matplotlib.pyplot as plt
@@ -130,7 +130,11 @@ def obstacle_detection_page():
 
         st.markdown("---")
 
-    k2_labelled_image, bgr_roof, greyscale_roof = utils.load_and_crop_roof_from_roof_id(
+    greyscale_roof = utils.st_load_photo_from_roof_id(
+        int(chosen_roof_id), obstacles_metadata, chosen_folder, greyscale_only=True
+    )
+
+    _photo, roof, labelled_photo, _labelled_roof = utils.st_load_photo_and_roof(
         int(chosen_roof_id), obstacles_metadata, chosen_folder
     )
     # +-----------------------------+
@@ -237,7 +241,7 @@ def obstacle_detection_page():
     # original roof
     # -------------
     st_roof.image(
-        k2_labelled_image,
+        labelled_photo,
         use_column_width=True,
         channels="BGRA",
         caption="Original image with database labels",
@@ -248,13 +252,13 @@ def obstacle_detection_page():
     fig, ax = plt.subplots(figsize=(3, 1))
 
     n, bins, patches = ax.hist(
-        bgr_roof[:, :, 0].flatten(), bins=50, edgecolor="blue", alpha=0.5
+        roof[:, :, 0].flatten(), bins=50, edgecolor="blue", alpha=0.5
     )
     n, bins, patches = ax.hist(
-        bgr_roof[:, :, 1].flatten(), bins=50, edgecolor="green", alpha=0.5
+        roof[:, :, 1].flatten(), bins=50, edgecolor="green", alpha=0.5
     )
     n, bins, patches = ax.hist(
-        bgr_roof[:, :, 2].flatten(), bins=50, edgecolor="red", alpha=0.5
+        roof[:, :, 2].flatten(), bins=50, edgecolor="red", alpha=0.5
     )
 
     ax.set_title("Cropped Roof RGB Histogram")
@@ -284,7 +288,7 @@ def obstacle_detection_page():
     st_results_widgets = st.columns((1, 1))
 
     st_results_widgets[0].image(
-        bgr_roof,
+        roof,
         use_column_width=True,
         channels="BGRA",
         caption="Cropped Roof (RGB) with Database Labels",

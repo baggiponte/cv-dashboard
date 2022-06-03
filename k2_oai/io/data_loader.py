@@ -175,31 +175,29 @@ def dbx_load_photo(
 
 def dbx_load_photos_from_roof_id(
     roof_id,
-    photos_metadata,
+    metadata,
     dropbox_path,
     dropbox_app,
     bgr_only: bool = False,
     greyscale_only: bool = False,
 ):
-    photo_name = photos_metadata.loc[
-        lambda df: df["roof_id"] == roof_id, "imageURL"
-    ].values[0]
+    photo_name = metadata.loc[lambda df: df["roof_id"] == roof_id, "imageURL"].values[0]
 
     return dbx_load_photo(
         photo_name, dropbox_path, dropbox_app, bgr_only, greyscale_only
     )
 
 
-def get_coordinates_from_roof_id(roof_id, photos_metadata) -> tuple[str, list[str]]:
+def get_coordinates_from_roof_id(roof_id, metadata) -> tuple[str, list[str]]:
 
-    roof_px_coordinates = photos_metadata.loc[
-        photos_metadata.roof_id == roof_id, "pixelCoordinates_roof"
+    roof_px_coordinates = metadata.loc[
+        metadata.roof_id == roof_id, "pixelCoordinates_roof"
     ].iloc[0]
 
     obstacles_px_coordinates = [
         coord
-        for coord in photos_metadata.loc[
-            photos_metadata.roof_id == roof_id, "pixelCoordinates_obstacle"
+        for coord in metadata.loc[
+            metadata.roof_id == roof_id, "pixelCoordinates_obstacle"
         ].values
     ]
 
@@ -208,21 +206,19 @@ def get_coordinates_from_roof_id(roof_id, photos_metadata) -> tuple[str, list[st
 
 def load_and_crop_roof_from_roof_id(
     roof_id,
-    photos_metadata,
+    metadata,
     dropbox_path,
     dropbox_app,
     greyscale_only: bool = False,
     bgr_only: bool = False,
     with_labels: bool = False,
 ):
-    roof_px_coord, obstacles_px_coord = get_coordinates_from_roof_id(
-        roof_id, photos_metadata
-    )
+    roof_px_coord, obstacles_px_coord = get_coordinates_from_roof_id(roof_id, metadata)
 
     if greyscale_only:
         greyscale_image = dbx_load_photos_from_roof_id(
             roof_id,
-            photos_metadata,
+            metadata,
             dropbox_path,
             dropbox_app,
             greyscale_only=greyscale_only,
@@ -236,7 +232,7 @@ def load_and_crop_roof_from_roof_id(
 
     if bgr_only:
         bgr_image = dbx_load_photos_from_roof_id(
-            roof_id, photos_metadata, dropbox_path, dropbox_app, bgr_only=bgr_only
+            roof_id, metadata, dropbox_path, dropbox_app, bgr_only=bgr_only
         )
         if with_labels:
             labelled_roof = draw_labels(bgr_image, roof_px_coord, obstacles_px_coord)
@@ -244,7 +240,7 @@ def load_and_crop_roof_from_roof_id(
         return rotate_and_crop_roof(bgr_image, roof_px_coord)
 
     bgr_image, greyscale_image = dbx_load_photos_from_roof_id(
-        roof_id, photos_metadata, dropbox_path, dropbox_app
+        roof_id, metadata, dropbox_path, dropbox_app
     )
 
     k2_labelled_image = draw_labels(bgr_image, roof_px_coord, obstacles_px_coord)
