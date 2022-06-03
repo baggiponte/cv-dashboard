@@ -26,46 +26,22 @@ def main():
 
     if "access_token" in st.session_state:
         st_oauth_text_boxes.empty()
-        readme_text = st.markdown(
-            """
-        # :house: Welcome!
 
-        This is OAI's dashboard to explore the image segmentation models designed to
-        detect obstacles on satellite images. The dashboard has the following modes:
-
-        * `Instructions` is this page.
-        * `Data Explorer` is an interface to perform exploratory data analysis.
-        * `Obstacle Annotation Tool` us a tool to annotate images and create new labels.
-        * `Obstacle Detection` is the interface to explore the image segmentation model.
-
-        """
-        )
+        pages_options = {
+            "Welcome": pages.welcome_page,
+            "Metadata Explorer": pages.metadata_explorer_page,
+            "Obstacle Annotation Tool": pages.obstacle_annotator_page,
+            "Obstacle Detection": pages.obstacle_detection_page,
+        }
 
         st.sidebar.title(":gear: Settings")
         app_mode = st.sidebar.selectbox(
             "Which interface would you like to use?",
-            (
-                "Instructions",
-                "Metadata Explorer",
-                "Obstacle Annotation Tool",
-                "Obstacle Detection",
-            ),
+            options=pages_options.keys(),
         )
+        st.sidebar.markdown("___")
 
-        if app_mode == "Instructions":
-            st.sidebar.success("Choose a mode from the sidebar to get started.")
-        elif app_mode == "Obstacle Detection":
-            readme_text.empty()
-            st.sidebar.markdown("___")
-            pages.obstacle_detection_page()
-        elif app_mode == "Obstacle Annotation Tool":
-            readme_text.empty()
-            st.sidebar.markdown("___")
-            pages.obstacle_annotator_page()
-        elif app_mode == "Metadata Explorer":
-            readme_text.empty()
-            st.sidebar.markdown("___")
-            pages.metadata_explorer_page()
+        pages_options[app_mode]()
 
 
 if __name__ == "__main__":
