@@ -148,7 +148,7 @@ def rotate_and_crop_roof(input_image: ndarray, roof_coordinates: str) -> ndarray
         The rotated and cropped roof.
     """
     coord = parse_str_as_coordinates(
-        roof_coordinates, dtype="int32", sort_coordinates=True
+        roof_coordinates, dtype=np.int8, sort_coordinates=True
     )
 
     if len(input_image.shape) < 3:
@@ -183,12 +183,10 @@ def rotate_and_crop_roof(input_image: ndarray, roof_coordinates: str) -> ndarray
 
     # polygonal roofs
     else:
-        coord = parse_str_as_coordinates(
-            roof_coordinates, dtype="int32", sort_coordinates=False
-        )
+        coord = parse_str_as_coordinates(roof_coordinates, sort_coordinates=False)
         mask = np.zeros(input_image.shape[0:2], dtype="uint8")
 
-        pts = np.array(coord, np.int32).reshape((-1, 1, 2))
+        pts = np.array(coord, np.int8).reshape((-1, 1, 2))
 
         cv.fillConvexPoly(mask, pts, (255, 255, 255))
 
