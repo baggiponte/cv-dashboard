@@ -20,7 +20,7 @@ def config_photo_folder(geo_metadata: bool = False, only_folders: bool = True):
     st.markdown("## :open_file_folder: Photos Folder")
 
     # get options for `chosen_folder`
-    root_contents = utils.st_listdir(DROPBOX_RAW_PHOTOS_ROOT).item_name.values
+    root_contents = utils.no_cache_st_listdir(DROPBOX_RAW_PHOTOS_ROOT).item_name.values
     photos_folders = sorted(file for file in root_contents if not file.endswith(".csv"))
 
     if not only_folders:
@@ -44,11 +44,15 @@ def config_photo_folder(geo_metadata: bool = False, only_folders: bool = True):
 def obstacles_counts(obstacles_metadata, photo_list):
 
     total_obst = obstacles_metadata.pixelCoordinates_obstacle.notna().shape[0]
-    unique_obst = obstacles_metadata.pixelCoordinates_obstacle.unique().shape[0]
+    unique_obst = obstacles_metadata.drop_duplicates(
+        subset=["imageURL", "pixelCoordinates_obstacle"]
+    ).shape[0]
 
     roofs_metadata = obstacles_metadata.drop_duplicates(subset="roof_id")
     total_roofs = roofs_metadata.pixelCoordinates_roof.notna().shape[0]
-    unique_roofs = roofs_metadata.pixelCoordinates_roof.unique().shape[0]
+    unique_roofs = roofs_metadata.drop_duplicates(
+        subset=["imageURL", "pixelCoordinates_roof"]
+    ).shape[0]
 
     st.info(
         f"""
