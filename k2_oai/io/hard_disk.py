@@ -14,5 +14,5 @@ def upload_hard_disk_data(dropbox_app, hard_disk_path=None):
             dropbox_upload_file_to(
                 dropbox_app,
                 os.path.join(hd_path, photo),
-                f"/k2/raw_photos/large_photos-5K_10K-api_upload/{photo}",
+                f"/k2/raw_photos/large_photos-5K_10K/{photo}",
             )

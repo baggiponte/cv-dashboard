@@ -8,7 +8,6 @@ import os
 from datetime import datetime
 
 import dropbox
-import numpy as np
 import streamlit as st
 from dotenv import load_dotenv
 
@@ -39,8 +38,7 @@ __all__ = [
     "st_load_dataframe",
     "st_load_metadata",
     "st_load_geo_metadata",
-    "st_load_label_annotations",
-    "load_random_photo",
+    "st_load_annotations",
 ]
 
 
@@ -114,23 +112,52 @@ def st_load_earth(dropbox_app=None):
 
 
 @st.cache(allow_output_mutation=True)
-def st_load_label_annotations(filename, dropbox_app=None):
+def st_load_annotations(filename, dropbox_app=None):
     dbx_app = dropbox_app or st_dropbox_connect()
     return data_loader.dbx_load_label_annotations(filename, dbx_app)
 
 
-@st.cache
-def st_load_photo_list_and_metadata(photos_folder, photos_root_path, dropbox_app=None):
-    photos_path = f"{photos_root_path or DROPBOX_RAW_PHOTOS_ROOT}/{photos_folder}"
+@st.cache(allow_output_mutation=True)
+def st_load_photo_list(photos_folder_name, photos_folder_path, dropbox_app=None):
 
     dbx_app = dropbox_app or st_dropbox_connect()
 
-    photos_list = st_list_contents_of(folder_name=photos_path, dropbox_app=dbx_app)
+    index_file = f"index-{photos_folder_name}.csv"
+    photos_folder_contents = st_list_contents_of(photos_folder_path).item_name.values
 
-    photos_metadata = st_load_metadata(dropbox_app=dbx_app)
+    if index_file in photos_folder_contents:
+        return st_load_dataframe(
+            f"index-{photos_folder_name}.csv", photos_folder_path, dbx_app
+        ).item_name
+    else:
+        return st_list_contents_of(
+            folder_name=photos_folder_path, dropbox_app=dbx_app
+        ).item_name
 
-    available_photos_metadata = photos_metadata[
-        photos_metadata.imageURL.isin(photos_list.item_name.values)
+
+@st.cache
+def st_load_photo_list_and_metadata(
+    photos_folder,
+    photos_root_path,
+    geo_metadata: bool = False,
+    dropbox_app=None,
+):
+    photos_path = f"{photos_root_path or DROPBOX_RAW_PHOTOS_ROOT}"
+
+    dbx_app = dropbox_app or st_dropbox_connect()
+
+    if geo_metadata:
+        photos_metadata = st_load_geo_metadata(dropbox_app=dbx_app)
+    else:
+        photos_metadata = st_load_metadata(dropbox_app=dbx_app)
+
+    if photos_folder is None:
+        return photos_metadata, photos_metadata.imageURL
+
+    photos_list = st_load_photo_list(photos_folder, photos_path, dbx_app)
+
+    available_photos_metadata = photos_metadata.loc[
+        photos_metadata.imageURL.isin(photos_list)
     ]
 
     return available_photos_metadata, photos_list
@@ -244,10 +271,6 @@ def obstacle_detection_pipeline(
     return blobs, roof_with_bboxes, obstacles_coordinates
 
 
-def load_random_photo(roofs_list):
-    st.session_state["roof_id_selector"] = np.random.choice(roofs_list)
-
-
 def save_annotations_to_dropbox(
     data_to_upload, filename, destination_folder, make_checkpoint=False
 ):
@@ -256,7 +279,7 @@ def save_annotations_to_dropbox(
 
     if make_checkpoint:
         timestamp = datetime.now().replace(microsecond=0).strftime("%Y_%m_%d-%H_%M_%S")
-        filename = f"{timestamp}-{filename}.csv"
+        filename = f"{timestamp}-{filename}"
 
     file_to_upload = f"/tmp/{filename}"
     destination_path = f"{destination_folder}/{filename}.csv"

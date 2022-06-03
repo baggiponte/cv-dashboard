@@ -2,89 +2,166 @@
 Dashboard page/mode to accept or reject the obstacle label available from the database.
 """
 
-import altair as alt
+from __future__ import annotations
+
+from datetime import datetime
+
 import numpy as np
+import pandas as pd
 import streamlit as st
 
-from k2_oai.dashboard import utils
-from k2_oai.io.dropbox_paths import DROPBOX_ANNOTATIONS_PATH, DROPBOX_RAW_PHOTOS_ROOT
+from k2_oai.dashboard import components, utils
+from k2_oai.io.dropbox_paths import DROPBOX_LABEL_ANNOTATIONS_PATH
 
 __all__ = ["obstacle_annotator_page"]
 
 
-def annotate_labels(mark: str, roof_id, label_data):
-    label_data.loc[label_data["roof_id"] == roof_id, "label_annotation"] = mark
+def annotate_labels(marks, roof_id, photos_folder, photos_metadata):
+    image_url = photos_metadata.loc[
+        photos_metadata["roof_id"] == roof_id, "imageURL"
+    ].values[0]
+
+    now = datetime.now().strftime("%Y_%m_%d-%H_%M_%S")
+
+    new_row = pd.DataFrame(
+        [
+            {
+                "roof_id": roof_id,
+                "annotation": marks,
+                "imageURL": image_url,
+                "photos_folder": photos_folder,
+                "annotation_time": now,
+            }
+        ]
+    ).astype({"roof_id": int, "annotation": int})
+
+    st.session_state["label_annotations"] = (
+        pd.concat([st.session_state["label_annotations"], new_row], ignore_index=True)
+        .astype({"roof_id": int, "annotation": int})
+        .drop_duplicates(subset=["roof_id"], keep="last")
+        .sort_values("roof_id")
+        .reset_index(drop=True)
+    )
+
+
+def load_random_photo(roofs_list):
+    st.session_state["roof_id"] = np.random.choice(roofs_list)
+
+
+def change_roof_id(how: str, available_roofs):
+    # note: np.where returns a tuple, in this case ([array],).
+    # use the double indexing like [0][0]!
+    current_index: int = np.where(available_roofs == st.session_state["roof_id"])[0][0]
+
+    if how == "next":
+        # otherwise is out of index
+        if current_index < len(available_roofs) - 1:
+            st.session_state["roof_id"] = available_roofs[current_index + 1]
+    elif how == "previous":
+        if current_index > 0:
+            st.session_state["roof_id"] = available_roofs[current_index - 1]
+    else:
+        raise ValueError(f"Invalid `how`: {how}. Must be `next` or `previous`.")
 
 
 def obstacle_annotator_page():
     st.title(":mag: Obstacle Annotation Tool")
-    st.write(
-        "Choose a roof id to see the labels that have been assigned to it",
-        "then use the buttons provided below to mark the label as good (`Y`),",
-        "bad (`N`) or to be improved (`M`).",
-    )
-
-    # +------------------------------+
-    # | Update Sidebar and Load Data |
-    # +------------------------------+
+    st.write()
 
     with st.sidebar:
 
-        st.markdown("## Data Sources")
+        # +---------------------------------------------+
+        # | Load photos metadata from a selected folder |
+        # +---------------------------------------------+
 
-        st.markdown("### Photo Folder")
+        (
+            chosen_folder,
+            photos_metadata,
+            photo_list,
+        ) = components.sidebar_chose_photo_folder()
 
-        # get options for `chosen_folder`
-        photos_folders = utils.st_list_contents_of(DROPBOX_RAW_PHOTOS_ROOT).item_name
+        # +--------------------------------------+
+        # | Choose where to save the annotations |
+        # +--------------------------------------+
 
-        chosen_folder = st.selectbox(
-            "Select the folder to load the photos from: ",
-            options=photos_folders,
-            index=0,
-            key="photos_folder",
+        st.markdown("## :pencil: Annotations Data")
+
+        annotations_folder = sorted(
+            utils.st_list_contents_of(
+                DROPBOX_LABEL_ANNOTATIONS_PATH
+            ).item_name.to_list(),
+            reverse=True,
         )
 
-        photos_metadata, dbx_photo_list = utils.st_load_photo_list_and_metadata(
-            photos_folder=chosen_folder,
-            photos_root_path=DROPBOX_RAW_PHOTOS_ROOT,
-        )
-
-        st.info(f"Available photos: {dbx_photo_list.shape[0]}")
-
-        st.markdown("### Annotations Data")
-
-        annotations_folder = utils.st_list_contents_of(
-            DROPBOX_ANNOTATIONS_PATH
-        ).item_name.to_list()
-
-        annotations_filename = st.selectbox(
+        chosen_annotations_file = st.selectbox(
             "Select the file to get and save the annotations: ",
             options=["New File"] + annotations_folder,
-            index=1,
+            index=0,
             key="annotations_filename",
         )
 
-        st.markdown("---")
+    # +---------------------------------+
+    # | Label annotation stats and data |
+    # +---------------------------------+
 
-    if st.session_state["annotations_filename"] == "New File":
+    available_roofs = photos_metadata.roof_id.unique()
+
+    if "label_annotations" not in st.session_state:
         st.session_state["label_annotations"] = (
-            photos_metadata[["roof_id", "imageURL"]]
-            .drop_duplicates("roof_id")
-            .sort_values("roof_id")
-            .assign(label_annotation=np.NaN)
+            pd.DataFrame()
+            .assign(
+                roof_id=np.NaN,
+                imageURL=np.NaN,
+                photos_folder=np.NaN,
+                annotation=np.NaN,
+                annotation_time=np.NaN,
+            )
+            .astype({"roof_id": int, "annotation": int})
+        )
+
+    annotated_roofs = (
+        st.session_state["label_annotations"]
+        .dropna(subset=["annotation"])
+        .roof_id.values
+    )
+
+    roofs_left_to_annotate = photos_metadata.loc[
+        lambda df: ~df.roof_id.isin(annotated_roofs),
+        "roof_id",
+    ].unique()
+
+    if chosen_annotations_file == "New File":
+        all_annotations = st.session_state["label_annotations"].dropna(
+            subset="annotation"
         )
     else:
-        st.session_state["label_annotations"] = utils.st_load_label_annotations(
-            annotations_filename
+        existing_annotations = utils.st_load_annotations(chosen_annotations_file)
+
+        roofs_left_to_annotate = photos_metadata.loc[
+            lambda df: ~df.roof_id.isin(existing_annotations.roof_id), "roof_id"
+        ].unique()
+
+        all_annotations = (
+            pd.concat(
+                [
+                    existing_annotations,
+                    st.session_state["label_annotations"].dropna(subset="annotation"),
+                ],
+                ignore_index=True,
+            )
+            .sort_values("roof_id")
+            .reset_index(drop=True)
+            .drop_duplicates(subset=["roof_id", "annotation"], keep="last")
         )
 
-    if "roofs_still_to_annotate" not in st.session_state:
-        st.session_state["roofs_still_to_annotate"] = photos_metadata.roof_id.loc[
-            lambda df: ~df.isin(st.session_state["label_annotations"].roof_id)
-        ]
-
-    label_annotations = st.session_state["label_annotations"]
-    roofs_still_to_annotate = st.session_state["roofs_still_to_annotate"]
+    with st.sidebar:
+        st.info(
+            f"""
+            Annotated: {annotated_roofs.shape[0]}.
+            To annotate: {roofs_left_to_annotate.shape[0]}
+            """
+        )
+        st.markdown("---")
 
     # +----------------+
     # | Choose roof id |
@@ -99,13 +176,32 @@ def obstacle_annotator_page():
 
         st.write("Choose a roof ID randomly...")
 
-        buf, st_rand, buf = st.columns((2, 1, 2))
+        buf, st_previous, st_rand, st_next, buf = st.columns((0.5, 1, 1, 1, 0.5))
+
+        st_previous.button(
+            "⬅️",
+            help="Load the photo before this one. "
+            "If nothing happens, this is the first photo.",
+            on_click=change_roof_id,
+            args=("previous", available_roofs),
+            key="sidebar_previous_roof_id",
+        )
 
         st_rand.button(
             "🔀",
-            help="Get a random roof ID that was not labelled yet",
-            on_click=utils.load_random_photo,
-            args=(roofs_still_to_annotate,),
+            help="Load a random photo that was not labelled yet",
+            on_click=load_random_photo,
+            args=(roofs_left_to_annotate,),
+            key="sidebar_random_roof_id",
+        )
+
+        st_next.button(
+            "➡️",
+            help="Load the photo right after this one. "
+            "If nothing happens, this is the last photo.",
+            on_click=change_roof_id,
+            args=("next", available_roofs),
+            key="sidebar_next_roof_id",
         )
 
         # roof ID selector
@@ -113,13 +209,10 @@ def obstacle_annotator_page():
         st.write("...or manually:")
         chosen_roof_id = st.selectbox(
             "Roof identifier:",
-            options=photos_metadata.roof_id.unique(),
+            options=available_roofs,
             help="Choose one out of all the available roof ids",
-            key="roof_id_selector",
+            key="roof_id",
         )
-
-        # uncomment if adding another section
-        # st.markdown("---")
 
     k2_labelled_image, bgr_roof, _ = utils.load_and_crop_roof_from_roof_id(
         int(chosen_roof_id), photos_metadata, chosen_folder
@@ -129,43 +222,82 @@ def obstacle_annotator_page():
     # | Labelling Actions |
     # +-------------------+
 
-    st_count, st_randomizer, buf, st_keep, st_drop, st_maybe, buf = st.columns(
-        (1.5, 1, 0.5, 1, 1, 1, 0.5)
-    )
+    (
+        buf,
+        st_previous,
+        st_randomizer,
+        st_next,
+        buf,
+        st_mark,
+        st_annotations,
+        st_save,
+    ) = st.columns((0.5, 1, 1, 1, 0.3, 1, 4, 1))
 
-    with st_count:
-        if chosen_roof_id not in label_annotations.roof_id:
-            st.info(f"`{chosen_roof_id}` not annotated yet")
-        else:
-            st.warning(f"`{chosen_roof_id}` already annotated")
+    st_previous.button(
+        "⬅️",
+        help="Load the previous photo. If nothing happens, this is the first photo.",
+        on_click=change_roof_id,
+        args=("previous", available_roofs),
+        key="previous_roof_id",
+    )
 
     st_randomizer.button(
         "🔀",
-        help="Load a random roof ID that was not labelled yet",
-        on_click=utils.load_random_photo,
-        args=(roofs_still_to_annotate,),
+        help="Load a random photo that was not labelled yet",
+        on_click=load_random_photo,
+        args=(roofs_left_to_annotate,),
+        key="random_roof_id",
     )
 
-    st_keep.button(
-        "Yes",
-        help="Mark the label as good",
-        on_click=annotate_labels,
-        args=("Y", chosen_roof_id, label_annotations),
+    st_next.button(
+        "➡️",
+        help="Load the next photo. If nothing happens, this is the last photo.",
+        on_click=change_roof_id,
+        args=("next", available_roofs),
+        key="next_roof_id",
     )
 
-    st_drop.button(
-        "No",
-        help="Mark the label as bad",
-        on_click=annotate_labels,
-        args=("N", chosen_roof_id, label_annotations),
+    chosen_annotations = st_annotations.radio(
+        label="Can the photo be used for training?",
+        options=[0, 1],
+        index=0,
+        help="0 means no, 1 means yes",
+        key="binary_annotation",
     )
 
-    st_maybe.button(
-        "To improve",
-        help="After some tweaking, label can be marked as good",
+    st_mark.button(
+        "📝",
+        help="Write the annotations to the dataset",
         on_click=annotate_labels,
-        args=("M", chosen_roof_id, label_annotations),
+        args=(
+            chosen_annotations,
+            chosen_roof_id,
+            chosen_folder,
+            photos_metadata,
+        ),
     )
+
+    with st_save:
+        filename = (
+            "obstacles-labels_annotations"
+            if chosen_annotations_file == "obstacles-labels_annotations.csv"
+            else "checkpoint-labels_annotations"
+        )
+
+        make_checkpoint = True if chosen_annotations_file == "New File" else False
+
+        if st.button("💾", help=f"Save annotations to {filename}.csv"):
+            utils.save_annotations_to_dropbox(
+                all_annotations,
+                filename,
+                DROPBOX_LABEL_ANNOTATIONS_PATH,
+                make_checkpoint,
+            )
+
+    if chosen_roof_id in all_annotations.roof_id.values:
+        st.info(f"Roof {chosen_roof_id} is already annotated")
+    else:
+        st.warning(f"Roof {chosen_roof_id} is not annotated")
 
     # +---------------+
     # | Plot the roof |
@@ -189,57 +321,12 @@ def obstacle_annotator_page():
             caption="Original image",
         )
 
-    # View Label Quality Dataset
-    # --------------------------
+    # +----------------+
+    # | Roof metadata  |
+    # +----------------+
 
-    st_data, st_save = st.columns((5, 1))
+    with st.expander(f"Roof {chosen_roof_id} metadata:"):
+        st.dataframe(photos_metadata.loc[photos_metadata.roof_id == chosen_roof_id])
 
-    with st_data:
-        with st.expander("View the annotations:", expanded=True):
-            st.dataframe(label_annotations.dropna(subset="label_annotation"))
-
-    with st_save:
-        st.info(
-            f"{len(label_annotations.dropna(subset='label_annotation'))} roofs vetted"
-        )
-
-        if annotations_filename == "obstacles-labels_annotations.csv":
-            filename = "obstacles-labels_annotations"
-        else:
-            filename = "checkpoint-labels_annotations"
-
-        if st.button("💾", help=f"Save annotations to {filename}.csv"):
-            if annotations_filename == "New File":
-                make_checkpoint = True
-            else:
-                make_checkpoint = False
-
-            utils.save_annotations_to_dropbox(
-                label_annotations.dropna(subset="label_annotation"),
-                filename,
-                DROPBOX_ANNOTATIONS_PATH,
-                make_checkpoint,
-            )
-
-    # +------------------------+
-    # | Annotations Statistics |
-    # +------------------------+
-
-    annotations = (
-        label_annotations.groupby("label_annotation")
-        .size()
-        .rename(index={"Y": "Good", "N": "Bad", "M": "Improve"})
-        .reset_index()
-        .rename(columns={0: "Count", "label_annotation": "Annotation"})
-        .sort_values("Count", ascending=False)
-    )
-
-    fig = (
-        alt.Chart(annotations)
-        .mark_bar()
-        .encode(x="Annotation:N", y="Count:Q", tooltip=["Count"])
-    )
-
-    with st.sidebar:
-        st.subheader("Annotations Statistics")
-        st.altair_chart(fig, use_container_width=True)
+    with st.expander("View the annotations:", expanded=True):
+        st.dataframe(all_annotations)

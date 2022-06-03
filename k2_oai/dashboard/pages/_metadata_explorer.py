@@ -11,43 +11,80 @@ from k2_oai.dashboard import utils
 
 __all__ = ["metadata_explorer_page"]
 
+from k2_oai.io.dropbox_paths import DROPBOX_RAW_PHOTOS_ROOT
+
 
 def metadata_explorer_page():
 
     st.title(":bar_chart: Metadata Explorer")
 
-    # +-----------+
-    # | Load Data |
-    # +-----------+
+    # +------------------------------+
+    # | Update Sidebar and Load Data |
+    # +------------------------------+
 
-    metadata = utils.st_load_geo_metadata()
-    # earth = utils.st_load_earth()
+    with st.sidebar:
+
+        st.markdown("## :open_file_folder: Photos Folder")
+
+        # get options for `chosen_folder`
+        photos_folders = sorted(
+            file
+            for file in utils.st_list_contents_of(
+                DROPBOX_RAW_PHOTOS_ROOT
+            ).item_name.values
+            if not file.endswith(".csv")
+        )
+
+        chosen_folder = st.selectbox(
+            "Select the folder to load the photos from:",
+            options=[None] + photos_folders,
+            index=0,
+            key="photos_folder",
+        )
+
+        photos_metadata, photo_list = utils.st_load_photo_list_and_metadata(
+            photos_folder=chosen_folder,
+            photos_root_path=DROPBOX_RAW_PHOTOS_ROOT,
+            geo_metadata=True,
+        )
+
+        st.info(
+            f"""
+            Available photos: {photo_list.shape[0]}
+
+            Unique roof ids: {photos_metadata.roof_id.unique().shape[0]}
+            """
+        )
 
     # +---------------+
     # | Zoom Levels   |
     # +---------------+
 
-    st.subheader("Photos Distribution by Zoom Level")
-    st.write(
-        """
-    Each increase in zoom level is twice as large in both the x and y directions.
-    Therefore, each higher zoom level results in a resolution four times higher than
-    the preceding level. For example, at zoom level 0 the map consists of one single
-    256x256 pixel tile. At zoom level 1, the map consists of four 256x256 pixel
-    tiles, resulting in a pixel space from 512x512.
-
-    Furthermore, the zoom level range depends on the world area you are looking at.
-    In other words, in some parts of the world, zoom is available up to only a
-    certain level.
-
-    The graph below shows the distribution of the zoom levels in the world. The most
-    represented class is European roofs with zoom level 18, which makes up 43% of all
-    available roofs. Roofs from Europe make up around 95% of all roof data.
-    """
+    st.subheader(
+        f"Distribution by Zoom Level of photos in {chosen_folder or 'all folders'}"
     )
+    with st.expander("What's the zoom level?"):
+        st.info(
+            """
+        Each increase in zoom level is twice as large in both the x and y directions.
+        Therefore, each higher zoom level results in a resolution four times higher than
+        the preceding level. For example, at zoom level 0 the map consists of one single
+        256x256 pixel tile. At zoom level 1, the map consists of four 256x256 pixel
+        tiles, resulting in a pixel space from 512x512.
+
+        Furthermore, the zoom level range depends on the world area you are looking at.
+        In other words, in some parts of the world, zoom is available up to only a
+        certain level.
+
+        The graph below shows the distribution of the zoom levels in the world. The most
+        represented class is European roofs with zoom level 18, which makes up 43% of
+        all available roofs. Roofs from Europe make up around 95% of all roof data.
+        """
+        )
 
     zoom_levels_by_continent = (
-        metadata.groupby(["continent", "zoom"])
+        photos_metadata.drop_duplicates("roof_id")
+        .groupby(["continent", "zoom"])
         .size()
         .reset_index()
         .rename(
@@ -91,6 +128,7 @@ def metadata_explorer_page():
             "Select a continent",
             options=(zoom_levels_by_continent.Continent.unique()),
             key="continent_detail",
+            index=2,
         )
 
         fig = (
@@ -114,7 +152,8 @@ def metadata_explorer_page():
     st.subheader("Zoom Level Distribution by Country")
 
     zoom_levels_by_country = (
-        metadata.groupby(["continent", "name", "zoom"])
+        photos_metadata.drop_duplicates("roof_id")
+        .groupby(["continent", "name", "zoom"])
         .size()
         .reset_index()
         .rename(
@@ -139,6 +178,7 @@ def metadata_explorer_page():
         "Select a continent",
         options=(zoom_levels_by_country.Continent.unique()),
         key="continent_selector",
+        index=2,
     )
 
     fig = (
