@@ -15,16 +15,16 @@ from k2_oai.utils import is_valid_method
 __all__ = ["config_photo_folder", "config_annotations"]
 
 
-def config_photo_folder(geo_metadata: bool = False):
+def config_photo_folder(geo_metadata: bool = False, only_folders: bool = True):
 
     st.markdown("## :open_file_folder: Photos Folder")
 
     # get options for `chosen_folder`
-    photos_folders = sorted(
-        file
-        for file in utils.st_listdir(DROPBOX_RAW_PHOTOS_ROOT).item_name.values
-        if not file.endswith(".csv")
-    )
+    root_contents = utils.st_listdir(DROPBOX_RAW_PHOTOS_ROOT).item_name.values
+    photos_folders = sorted(file for file in root_contents if not file.endswith(".csv"))
+
+    if not only_folders:
+        photos_folders.insert(0, None)
 
     chosen_folder = st.selectbox(
         "Select the folder to load the photos from:",

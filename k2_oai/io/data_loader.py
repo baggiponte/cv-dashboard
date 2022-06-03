@@ -10,7 +10,6 @@ import pandas as pd
 
 from k2_oai.io import dropbox as dbx
 from k2_oai.io.dropbox_paths import (
-    DROPBOX_EXTERNAL_DATA_PATH,
     DROPBOX_LABEL_ANNOTATIONS_PATH,
     DROPBOX_PHOTOS_METADATA_PATH,
 )
@@ -20,7 +19,6 @@ __all__ = [
     "dbx_load_dataframe",
     "dbx_load_metadata",
     "dbx_load_geo_metadata",
-    "dbx_load_earth",
     "dbx_load_label_annotations",
     "dbx_load_photo",
     "dbx_load_photos_from_roof_id",
@@ -83,15 +81,6 @@ def dbx_load_geo_metadata(dropbox_app):
     return dbx_load_dataframe(
         "geometries-roofs_images_obstacles.parquet",
         dropbox_path=DROPBOX_PHOTOS_METADATA_PATH,
-        dropbox_app=dropbox_app,
-    )
-
-
-def dbx_load_earth(dropbox_app):
-    return dbx_load_geodataframe(
-        "earth.geo.json",
-        dropbox_path=DROPBOX_EXTERNAL_DATA_PATH,
-        crs=4326,
         dropbox_app=dropbox_app,
     )
 

@@ -7,9 +7,7 @@ import altair as alt
 import numpy as np
 import streamlit as st
 
-from k2_oai.dashboard import utils
 from k2_oai.dashboard.components import sidebar
-from k2_oai.io.dropbox_paths import DROPBOX_RAW_PHOTOS_ROOT
 
 __all__ = ["metadata_explorer_page"]
 
@@ -22,25 +20,9 @@ def metadata_explorer_page():
     # +------------------------------+
 
     with st.sidebar:
-        st.markdown("## :open_file_folder: Photos Folder")
 
-        # get options for `chosen_folder`
-        photos_folders = sorted(
-            file
-            for file in utils.st_listdir(DROPBOX_RAW_PHOTOS_ROOT).item_name.values
-            if not file.endswith(".csv")
-        )
-
-        chosen_folder = st.selectbox(
-            "Select the folder to load the photos from:",
-            options=[None] + photos_folders,
-            index=0,
-            key="photos_folder",
-        )
-
-        obstacles_metadata, photos_list = utils.st_load_photo_list_and_metadata(
-            photos_folder=chosen_folder,
-            geo_metadata=True,
+        chosen_folder, obstacles_metadata, photos_list = sidebar.config_photo_folder(
+            geo_metadata=True, only_folders=False
         )
 
         roofs_metadata = obstacles_metadata.drop_duplicates(subset="roof_id")

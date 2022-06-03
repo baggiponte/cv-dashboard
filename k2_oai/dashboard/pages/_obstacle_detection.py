@@ -1,6 +1,6 @@
 """
 Dashboard mode to explore the OpenCV pipeline for obstacle detection and annotate the
-hyperparameters of each _photo
+hyperparameters of each photo
 """
 
 import matplotlib.pyplot as plt
