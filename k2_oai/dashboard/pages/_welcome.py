@@ -1,5 +1,7 @@
 import streamlit as st
 
+__all__ = ["welcome_page"]
+
 
 def welcome_page():
     st.sidebar.success("Choose a mode from the sidebar to get started.")

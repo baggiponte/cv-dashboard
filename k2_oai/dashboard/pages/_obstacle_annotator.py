@@ -57,9 +57,11 @@ def obstacle_annotator_page():
 
         (
             chosen_folder,
-            photos_metadata,
+            obstacles_metadata,
             photo_list,
         ) = sidebar.config_photo_folder()
+
+        sidebar.obstacles_counts(obstacles_metadata, photo_list)
 
         # +---------------------------------------+
         # | Load an existing annotations savefile |
@@ -75,7 +77,7 @@ def obstacle_annotator_page():
     # | Label annotation stats and data |
     # +---------------------------------+
 
-    available_roofs = photos_metadata.roof_id.unique()
+    available_roofs = obstacles_metadata.roof_id.unique()
 
     if "label_annotations" not in st.session_state:
         st.session_state["label_annotations"] = (
@@ -96,7 +98,7 @@ def obstacle_annotator_page():
         .roof_id.values
     )
 
-    roofs_left_to_annotate = photos_metadata.roof_id.loc[
+    roofs_left_to_annotate = obstacles_metadata.roof_id.loc[
         lambda df: ~df.isin(annotated_roofs)
     ].unique()
 
@@ -107,7 +109,7 @@ def obstacle_annotator_page():
     else:
         existing_annotations = utils.st_load_annotations(chosen_annotations_file)
 
-        roofs_left_to_annotate = photos_metadata.roof_id.loc[
+        roofs_left_to_annotate = obstacles_metadata.roof_id.loc[
             lambda df: ~df.isin(existing_annotations.roof_id.unique())
         ].unique()
 
@@ -141,7 +143,7 @@ def obstacle_annotator_page():
 
     photo, roof, labelled_photo, labelled_roof = utils.st_load_photo_and_roof(
         int(chosen_roof_id),
-        photos_metadata,
+        obstacles_metadata,
         chosen_folder,
     )
 
@@ -171,7 +173,7 @@ def obstacle_annotator_page():
                 chosen_annotations,
                 chosen_roof_id,
                 chosen_folder,
-                photos_metadata,
+                obstacles_metadata,
             ),
         )
 
@@ -229,7 +231,9 @@ def obstacle_annotator_page():
     # +----------------+
 
     with st.expander(f"Roof {chosen_roof_id} metadata:"):
-        st.dataframe(photos_metadata.loc[photos_metadata.roof_id == chosen_roof_id])
+        st.dataframe(
+            obstacles_metadata.loc[obstacles_metadata.roof_id == chosen_roof_id]
+        )
 
     with st.expander("View the annotations:", expanded=True):
         st.dataframe(all_annotations)

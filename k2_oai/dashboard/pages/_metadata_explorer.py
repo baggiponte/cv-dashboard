@@ -8,14 +8,13 @@ import numpy as np
 import streamlit as st
 
 from k2_oai.dashboard import utils
+from k2_oai.dashboard.components import sidebar
+from k2_oai.io.dropbox_paths import DROPBOX_RAW_PHOTOS_ROOT
 
 __all__ = ["metadata_explorer_page"]
 
-from k2_oai.io.dropbox_paths import DROPBOX_RAW_PHOTOS_ROOT
-
 
 def metadata_explorer_page():
-
     st.title(":bar_chart: Metadata Explorer")
 
     # +------------------------------+
@@ -23,15 +22,12 @@ def metadata_explorer_page():
     # +------------------------------+
 
     with st.sidebar:
-
         st.markdown("## :open_file_folder: Photos Folder")
 
         # get options for `chosen_folder`
         photos_folders = sorted(
             file
-            for file in utils.st_list_contents_of(
-                DROPBOX_RAW_PHOTOS_ROOT
-            ).item_name.values
+            for file in utils.st_listdir(DROPBOX_RAW_PHOTOS_ROOT).item_name.values
             if not file.endswith(".csv")
         )
 
@@ -42,18 +38,14 @@ def metadata_explorer_page():
             key="photos_folder",
         )
 
-        photos_metadata, photo_list = utils.st_load_photo_list_and_metadata(
+        obstacles_metadata, photos_list = utils.st_load_photo_list_and_metadata(
             photos_folder=chosen_folder,
             geo_metadata=True,
         )
 
-        st.info(
-            f"""
-            Available photos: {photo_list.shape[0]}
+        roofs_metadata = obstacles_metadata.drop_duplicates(subset="roof_id")
 
-            Unique roof ids: {photos_metadata.roof_id.unique().shape[0]}
-            """
-        )
+        sidebar.obstacles_counts(obstacles_metadata, photos_list)
 
     # +---------------+
     # | Zoom Levels   |
@@ -82,8 +74,7 @@ def metadata_explorer_page():
         )
 
     zoom_levels_by_continent = (
-        photos_metadata.drop_duplicates("roof_id")
-        .groupby(["continent", "zoom"])
+        roofs_metadata.groupby(["continent", "zoom"])
         .size()
         .reset_index()
         .rename(
@@ -100,6 +91,8 @@ def metadata_explorer_page():
             )
         )
     )
+
+    continents = zoom_levels_by_continent.Continent.unique()
 
     fig = (
         alt.Chart(zoom_levels_by_continent)
@@ -120,14 +113,13 @@ def metadata_explorer_page():
     # +-------------------------+
 
     with st.expander("Inspect zoom levels by continent"):
-
         st_plot, st_selector = st.columns((3, 1))
 
         st_selector.selectbox(
             "Select a continent",
-            options=(zoom_levels_by_continent.Continent.unique()),
+            options=continents,
             key="continent_detail",
-            index=2,
+            index=2 if len(continents) > 2 else 0,
         )
 
         fig = (
@@ -151,8 +143,7 @@ def metadata_explorer_page():
     st.subheader("Zoom Level Distribution by Country")
 
     zoom_levels_by_country = (
-        photos_metadata.drop_duplicates("roof_id")
-        .groupby(["continent", "name", "zoom"])
+        roofs_metadata.groupby(["continent", "name", "zoom"])
         .size()
         .reset_index()
         .rename(
@@ -175,9 +166,9 @@ def metadata_explorer_page():
 
     st_selector.selectbox(
         "Select a continent",
-        options=(zoom_levels_by_country.Continent.unique()),
+        options=continents,
         key="continent_selector",
-        index=2,
+        index=2 if len(continents) > 2 else 0,
     )
 
     fig = (

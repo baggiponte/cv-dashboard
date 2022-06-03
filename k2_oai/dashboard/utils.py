@@ -22,7 +22,7 @@ from k2_oai.utils import draw_labels, rotate_and_crop_roof
 
 __all__ = [
     "st_dropbox_connect",
-    "st_list_contents_of",
+    "st_listdir",
     "st_load_dataframe",
     "st_load_metadata",
     "st_load_geo_metadata",
@@ -40,9 +40,14 @@ def st_dropbox_connect():
 
 
 @st.cache
-def st_list_contents_of(folder_name):
+def st_listdir(path):
     dbx_app = st_dropbox_connect()
-    return dbx.dropbox_list_contents_of(folder_name, dbx_app)
+    return dbx.dropbox_listdir(path, dbx_app)
+
+
+def no_cache_st_listdir(path):
+    dbx_app = st_dropbox_connect()
+    return dbx.dropbox_listdir(path, dbx_app)
 
 
 @st.cache
@@ -70,42 +75,40 @@ def st_load_annotations(filename):
 
 
 @st.cache(allow_output_mutation=True)
-def st_load_photo_list(photos_folder_name, photos_folder_path):
+def st_load_photo_list(photos_folder):
 
-    index_file = f"index-{photos_folder_name}.csv"
-    photos_folder_contents = st_list_contents_of(photos_folder_path).item_name.values
+    root_folder = DROPBOX_RAW_PHOTOS_ROOT
+    photos_folder_contents = st_listdir(root_folder).item_name.values
+
+    index_file = f"index-{photos_folder}.csv"
 
     if index_file in photos_folder_contents:
-        return st_load_dataframe(
-            f"index-{photos_folder_name}.csv", photos_folder_path
-        ).item_name
+        return st_load_dataframe(index_file, root_folder)
     else:
-        return st_list_contents_of(folder_name=photos_folder_path).item_name
+        photos_path = f"{root_folder}/{photos_folder}"
+        return st_listdir(path=photos_path)[["item_name"]]
 
 
 @st.cache
 def st_load_photo_list_and_metadata(
-    photos_folder,
-    photos_root_path,
+    photos_folder=None,
     geo_metadata: bool = False,
 ):
-    photos_path = f"{photos_root_path or DROPBOX_RAW_PHOTOS_ROOT}"
-
     if geo_metadata:
-        photos_metadata = st_load_geo_metadata()
+        obstacle_metadata = st_load_geo_metadata()
     else:
-        photos_metadata = st_load_metadata()
+        obstacle_metadata = st_load_metadata()
 
     if photos_folder is None:
-        return photos_metadata, photos_metadata.imageURL
+        return obstacle_metadata, obstacle_metadata.imageURL.unique()
 
-    photos_list = st_load_photo_list(photos_folder, photos_path)
+    photos_list = st_load_photo_list(photos_folder)
 
-    available_photos_metadata = photos_metadata.loc[
-        photos_metadata.imageURL.isin(photos_list)
+    available_metadata = obstacle_metadata.loc[
+        lambda df: df.imageURL.isin(photos_list.item_name)
     ]
 
-    return available_photos_metadata, photos_list
+    return available_metadata, photos_list
 
 
 @st.cache(allow_output_mutation=True)

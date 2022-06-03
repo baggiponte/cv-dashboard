@@ -22,7 +22,7 @@ def config_photo_folder(geo_metadata: bool = False):
     # get options for `chosen_folder`
     photos_folders = sorted(
         file
-        for file in utils.st_list_contents_of(DROPBOX_RAW_PHOTOS_ROOT).item_name.values
+        for file in utils.st_listdir(DROPBOX_RAW_PHOTOS_ROOT).item_name.values
         if not file.endswith(".csv")
     )
 
@@ -33,21 +33,42 @@ def config_photo_folder(geo_metadata: bool = False):
         key="photos_folder",
     )
 
-    photos_metadata, photo_list = utils.st_load_photo_list_and_metadata(
+    obstacles_metadata, photo_list = utils.st_load_photo_list_and_metadata(
         photos_folder=chosen_folder,
-        photos_root_path=DROPBOX_RAW_PHOTOS_ROOT,
         geo_metadata=geo_metadata,
     )
 
+    return chosen_folder, obstacles_metadata, photo_list
+
+
+def obstacles_counts(obstacles_metadata, photo_list):
+
+    total_obst = obstacles_metadata.pixelCoordinates_obstacle.notna().shape[0]
+    unique_obst = obstacles_metadata.pixelCoordinates_obstacle.unique().shape[0]
+
+    roofs_metadata = obstacles_metadata.drop_duplicates(subset="roof_id")
+    total_roofs = roofs_metadata.pixelCoordinates_roof.notna().shape[0]
+    unique_roofs = roofs_metadata.pixelCoordinates_roof.unique().shape[0]
+
     st.info(
         f"""
-        Available photos: {photo_list.shape[0]}
+        Photos with tagged obstacles: {photo_list.shape[0]}
 
-        Unique roof ids: {photos_metadata.roof_id.unique().shape[0]}
+        Total roofs: {total_roofs}
+
+        Total obstacles: {total_obst}
         """
     )
 
-    return chosen_folder, photos_metadata, photo_list
+    st.warning(
+        f"""
+        Duplicate roofs: {total_roofs - unique_roofs}
+        ({(total_roofs - unique_roofs) / total_roofs * 100:.2f}%)
+
+        Duplicate obstacles: {total_obst - unique_obst}
+        ({(total_obst - unique_obst) / total_obst * 100:.2f}%)
+        """
+    )
 
 
 def config_annotations(mode: str):
@@ -62,7 +83,7 @@ def config_annotations(mode: str):
     st.markdown("## :card_index_dividers: Annotations")
 
     folder_contents = sorted(
-        utils.st_list_contents_of(dropbox_path).item_name.to_list(),
+        utils.st_listdir(dropbox_path).item_name.to_list(),
         reverse=True,
     )
 

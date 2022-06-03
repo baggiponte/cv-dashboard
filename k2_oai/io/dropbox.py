@@ -24,7 +24,7 @@ __all__ = [
     "dropbox_oauth2_connect",
     "dropbox_connect",
     "dropbox_connect_access_token_only",
-    "dropbox_list_contents_of",
+    "dropbox_listdir",
     "dropbox_upload_file_to",
     "dropbox_download_from",
 ]
@@ -144,7 +144,7 @@ def _parse_dropbox_folder_content(folder_content):
     return files_list
 
 
-def dropbox_list_contents_of(dropbox_path, dropbox_app):
+def dropbox_listdir(dropbox_path, dropbox_app):
     """Return a Pandas dataframe of files in a given Dropbox folder path in the Apps
     directory.
     """

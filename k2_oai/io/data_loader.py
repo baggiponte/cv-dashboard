@@ -98,7 +98,7 @@ def dbx_load_earth(dropbox_app):
 
 def dbx_create_label_annotations(dropbox_app, num_checkpoints: int = 0):
 
-    metadata_folder_contents = dbx.dropbox_list_contents_of(
+    metadata_folder_contents = dbx.dropbox_listdir(
         DROPBOX_LABEL_ANNOTATIONS_PATH, dropbox_app
     )
 

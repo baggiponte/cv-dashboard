@@ -7,7 +7,8 @@ import matplotlib.pyplot as plt
 import numpy as np
 import streamlit as st
 
-from k2_oai.dashboard import components, utils
+from k2_oai.dashboard import utils
+from k2_oai.dashboard.components import sidebar
 from k2_oai.io.dropbox_paths import DROPBOX_HYPERPARAM_ANNOTATIONS_PATH
 
 __all__ = ["obstacle_detection_page"]
@@ -66,9 +67,11 @@ def obstacle_detection_page():
     with st.sidebar:
         (
             chosen_folder,
-            photos_metadata,
+            obstacles_metadata,
             photo_list,
-        ) = components.sidebar_chose_photo_folder()
+        ) = sidebar.config_photo_folder()
+
+        sidebar.obstacles_counts(obstacles_metadata, photo_list)
 
         st.markdown("---")
 
@@ -78,7 +81,7 @@ def obstacle_detection_page():
 
     if "obstacles_hyperparameters" not in st.session_state:
         st.session_state["obstacles_hyperparameters"] = (
-            photos_metadata[["roof_id", "imageURL"]]
+            obstacles_metadata[["roof_id", "imageURL"]]
             .drop_duplicates("roof_id")
             .sort_values("roof_id")
             .assign(
@@ -128,7 +131,7 @@ def obstacle_detection_page():
         st.markdown("---")
 
     k2_labelled_image, bgr_roof, greyscale_roof = utils.load_and_crop_roof_from_roof_id(
-        int(chosen_roof_id), photos_metadata, chosen_folder
+        int(chosen_roof_id), obstacles_metadata, chosen_folder
     )
     # +-----------------------------+
     # | Obstacle Detection Pipeline |
