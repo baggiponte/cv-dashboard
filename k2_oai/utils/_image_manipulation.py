@@ -15,8 +15,8 @@ from k2_oai.utils._parsers import parse_str_as_coordinates
 __all__ = [
     "read_image_from_bytestring",
     "pad_image",
-    "experimental_draw_labels",
-    "draw_labels",
+    "draw_labels_on_cropped_roof",
+    "draw_labels_on_photo",
     "rotate_and_crop_roof",
 ]
 
@@ -84,8 +84,8 @@ def pad_image(
     return padded_image, (margin_h, margin_w)
 
 
-def draw_labels(
-    input_image: ndarray,
+def draw_labels_on_photo(
+    photo: ndarray,
     roof_coordinates: str | ndarray,
     obstacle_coordinates: str | list[str] | None,
 ):
@@ -93,7 +93,7 @@ def draw_labels(
 
     Parameters
     ----------
-    input_image : ndarray
+    photo : ndarray
         Input image.
     roof_coordinates : str or ndarray
         Roof coordinates, either as string or list of lists of integers.
@@ -105,23 +105,23 @@ def draw_labels(
     ndarray
         Image with labels drawn.
     """
-    target_image = input_image.copy()
+    photo_copy = photo.copy()
 
     points: ndarray = parse_str_as_coordinates(roof_coordinates).reshape((-1, 1, 2))
-    result: ndarray = cv.polylines(target_image, [points], True, (0, 0, 255), 2)
+    result: ndarray = cv.polylines(photo_copy, [points], True, (0, 0, 255), 2)
 
     if obstacle_coordinates is None:
         return result
 
     for obst in obstacle_coordinates:
         points: ndarray = parse_str_as_coordinates(obst).reshape((-1, 1, 2))
-        result: ndarray = cv.polylines(target_image, [points], True, (255, 0, 0), 2)
+        result: ndarray = cv.polylines(photo_copy, [points], True, (255, 0, 0), 2)
 
     return result
 
 
-def experimental_draw_labels(
-    input_image: ndarray,
+def draw_labels_on_cropped_roof(
+    cropped_roof: ndarray,
     roof_coordinates: str | ndarray,
     obstacle_coordinates: str | list[str] | None,
 ) -> ndarray:
@@ -129,7 +129,7 @@ def experimental_draw_labels(
 
     Parameters
     ----------
-    input_image : ndarray
+    cropped_roof : ndarray
         Input image.
     roof_coordinates : str or ndarray
         Roof coordinates, either as string or list of lists of integers.
@@ -141,7 +141,7 @@ def experimental_draw_labels(
     ndarray
         Image with labels drawn.
     """
-    target_image = input_image.copy()
+    target_image = cropped_roof.copy()
 
     if obstacle_coordinates is None:
         return target_image
