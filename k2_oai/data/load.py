@@ -10,7 +10,7 @@ import pandas as pd
 
 from k2_oai import dropbox as dbx
 from k2_oai.dropbox import DROPBOX_LABEL_ANNOTATIONS_PATH, DROPBOX_PHOTOS_METADATA_PATH
-from k2_oai.utils import draw_labels, rotate_and_crop_roof
+from k2_oai.utils import draw_labels_on_photo, rotate_and_crop_roof
 
 __all__ = [
     "dbx_load_dataframe",
@@ -57,20 +57,6 @@ def dbx_load_metadata(dropbox_app):
         "join-roofs_images_obstacles.parquet",
         dropbox_path=DROPBOX_PHOTOS_METADATA_PATH,
         dropbox_app=dropbox_app,
-    )
-
-
-def dbx_create_geo_metadata(dropbox_app):
-    metadata = (
-        dbx_load_metadata(dropbox_app=dropbox_app)
-        .dropna(subset=["center_lng", "center_lat"])
-        .rename(columns={"center_lng": "lon", "center_lat": "lat"})
-    )
-
-    return geopandas.GeoDataFrame(
-        metadata,
-        geometry=geopandas.points_from_xy(metadata.lon, metadata.lat),
-        crs=4326,
     )
 
 
@@ -210,7 +196,7 @@ def load_and_crop_roof_from_roof_id(
             greyscale_only=greyscale_only,
         )
         if with_labels:
-            labelled_roof = draw_labels(
+            labelled_roof = draw_labels_on_photo(
                 greyscale_image, roof_px_coord, obstacles_px_coord
             )
             return rotate_and_crop_roof(labelled_roof, roof_px_coord)
@@ -221,7 +207,9 @@ def load_and_crop_roof_from_roof_id(
             roof_id, metadata, dropbox_path, dropbox_app, bgr_only=bgr_only
         )
         if with_labels:
-            labelled_roof = draw_labels(bgr_image, roof_px_coord, obstacles_px_coord)
+            labelled_roof = draw_labels_on_photo(
+                bgr_image, roof_px_coord, obstacles_px_coord
+            )
             return rotate_and_crop_roof(labelled_roof, roof_px_coord)
         return rotate_and_crop_roof(bgr_image, roof_px_coord)
 
@@ -229,7 +217,9 @@ def load_and_crop_roof_from_roof_id(
         roof_id, metadata, dropbox_path, dropbox_app
     )
 
-    k2_labelled_image = draw_labels(bgr_image, roof_px_coord, obstacles_px_coord)
+    k2_labelled_image = draw_labels_on_photo(
+        bgr_image, roof_px_coord, obstacles_px_coord
+    )
     labelled_roof = rotate_and_crop_roof(k2_labelled_image, roof_px_coord)
     greyscale_roof = rotate_and_crop_roof(greyscale_image, roof_px_coord)
 
