@@ -15,6 +15,7 @@ from k2_oai.utils._parsers import parse_str_as_coordinates
 __all__ = [
     "read_image_from_bytestring",
     "pad_image",
+    "experimental_draw_labels",
     "draw_labels",
     "rotate_and_crop_roof",
 ]
@@ -84,6 +85,42 @@ def pad_image(
 
 
 def draw_labels(
+    input_image: ndarray,
+    roof_coordinates: str | ndarray,
+    obstacle_coordinates: str | list[str] | None,
+):
+    """Draws roof and obstacle labels on the input image from their coordinates.
+
+    Parameters
+    ----------
+    input_image : ndarray
+        Input image.
+    roof_coordinates : str or ndarray
+        Roof coordinates, either as string or list of lists of integers.
+    obstacle_coordinates : str or ndarray or None (default: None)
+        Obstacle coordinates. Can be None if there are no obstacles. Defaults to None.
+
+    Returns
+    -------
+    ndarray
+        Image with labels drawn.
+    """
+    target_image = input_image.copy()
+
+    points: ndarray = parse_str_as_coordinates(roof_coordinates).reshape((-1, 1, 2))
+    result: ndarray = cv.polylines(target_image, [points], True, (0, 0, 255), 2)
+
+    if obstacle_coordinates is None:
+        return result
+
+    for obst in obstacle_coordinates:
+        points: ndarray = parse_str_as_coordinates(obst).reshape((-1, 1, 2))
+        result: ndarray = cv.polylines(target_image, [points], True, (255, 0, 0), 2)
+
+    return result
+
+
+def experimental_draw_labels(
     input_image: ndarray,
     roof_coordinates: str | ndarray,
     obstacle_coordinates: str | list[str] | None,

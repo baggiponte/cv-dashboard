@@ -11,7 +11,7 @@ import streamlit as st
 from k2_oai.io import data_loader
 from k2_oai.io import dropbox as dbx
 from k2_oai.io.dropbox_paths import DROPBOX_RAW_PHOTOS_ROOT
-from k2_oai.utils import draw_labels, rotate_and_crop_roof
+from k2_oai.utils import draw_labels, rotate_and_crop_roof  # , experimental_draw_labels
 
 __all__ = [
     "st_dropbox_connect",
@@ -178,6 +178,10 @@ def st_load_photo_and_roof(
     chosen_folder,
     as_greyscale: bool = False,
 ):
+    roof_px_coord, obstacles_px_coord = get_coordinates_from_roof_id(
+        roof_id, photos_metadata
+    )
+
     if as_greyscale:
         photo = st_load_photo_from_roof_id(
             roof_id, photos_metadata, chosen_folder, greyscale_only=True
@@ -187,11 +191,12 @@ def st_load_photo_and_roof(
             roof_id, photos_metadata, chosen_folder, bgr_only=True
         )
 
-    roof_px_coord, obstacles_px_coord = get_coordinates_from_roof_id(
-        roof_id, photos_metadata
-    )
-
     labelled_photo = draw_labels(photo, roof_px_coord, obstacles_px_coord)
+    # labelled_photo = experimental_draw_labels(
+    #     photo,
+    #     roof_px_coord,
+    #     obstacles_px_coord
+    # )
 
     roof = rotate_and_crop_roof(photo, roof_px_coord)
     labelled_roof = rotate_and_crop_roof(labelled_photo, roof_px_coord)
