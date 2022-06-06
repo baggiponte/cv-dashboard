@@ -8,11 +8,8 @@ import cv2 as cv
 import geopandas
 import pandas as pd
 
-from k2_oai.io import dropbox as dbx
-from k2_oai.io.dropbox_paths import (
-    DROPBOX_LABEL_ANNOTATIONS_PATH,
-    DROPBOX_PHOTOS_METADATA_PATH,
-)
+from k2_oai import dropbox as dbx
+from k2_oai.dropbox import DROPBOX_LABEL_ANNOTATIONS_PATH, DROPBOX_PHOTOS_METADATA_PATH
 from k2_oai.utils import draw_labels, rotate_and_crop_roof
 
 __all__ = [

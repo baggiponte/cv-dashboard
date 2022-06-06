@@ -8,9 +8,9 @@ import os
 
 import streamlit as st
 
-from k2_oai.io import data_loader
-from k2_oai.io import dropbox as dbx
-from k2_oai.io.dropbox_paths import DROPBOX_RAW_PHOTOS_ROOT
+from k2_oai import dropbox as dbx
+from k2_oai.data import data_loader
+from k2_oai.dropbox import DROPBOX_RAW_PHOTOS_ROOT
 from k2_oai.utils import draw_labels, rotate_and_crop_roof  # , experimental_draw_labels
 
 __all__ = [

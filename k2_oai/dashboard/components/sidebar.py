@@ -8,7 +8,7 @@ import streamlit as st
 from pandas import DataFrame
 
 from k2_oai.dashboard import utils
-from k2_oai.io.dropbox_paths import (
+from k2_oai.dropbox import (
     DROPBOX_HYPERPARAM_ANNOTATIONS_PATH,
     DROPBOX_LABEL_ANNOTATIONS_PATH,
     DROPBOX_RAW_PHOTOS_ROOT,

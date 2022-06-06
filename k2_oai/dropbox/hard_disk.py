@@ -1,6 +1,6 @@
 import os
 
-from k2_oai.io.dropbox import dropbox_upload_file_to
+from k2_oai.dropbox import dropbox_upload_file_to
 
 _HARD_DISK_PATH = "/Volumes/Elements/Big_Size_Images_2"
 
