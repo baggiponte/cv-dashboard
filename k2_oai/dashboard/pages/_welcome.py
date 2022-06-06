@@ -1,3 +1,7 @@
+"""
+First page of the dashboard.
+"""
+
 import streamlit as st
 
 __all__ = ["welcome_page"]

@@ -1,3 +1,7 @@
+"""
+Common functions (e.g. not related to load data from Dropbox).
+"""
+
 from datetime import datetime
 
 import pandas as pd

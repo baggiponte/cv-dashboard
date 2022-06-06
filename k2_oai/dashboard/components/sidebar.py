@@ -1,5 +1,5 @@
 """
-Dashboard components to insert elements, preferably into the sidebar
+Dashboard components, preferably for the sidebar, to select data sources and save data.
 """
 from typing import Any
 

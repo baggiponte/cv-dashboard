@@ -1,3 +1,7 @@
+"""
+Login UIs, e.g. log in to Dropbox account
+"""
+
 import os
 
 import dropbox

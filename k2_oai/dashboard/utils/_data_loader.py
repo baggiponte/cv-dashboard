@@ -1,5 +1,5 @@
 """
-Common utilities for dashboard mode pages.
+Convenient wrappers around data loader functions to load data for the dashboard.
 """
 
 from __future__ import annotations
@@ -9,7 +9,7 @@ import os
 import streamlit as st
 
 from k2_oai import dropbox as dbx
-from k2_oai.data import data_loader
+from k2_oai.data import load
 from k2_oai.dropbox import DROPBOX_RAW_PHOTOS_ROOT
 from k2_oai.utils import draw_labels, rotate_and_crop_roof  # , experimental_draw_labels
 
@@ -69,25 +69,25 @@ def st_listdir_no_cache(path):
 @st.cache
 def st_load_dataframe(filename, dropbox_path):
     dbx_app = st_dropbox_connect()
-    return data_loader.dbx_load_dataframe(filename, dropbox_path, dbx_app)
+    return load.dbx_load_dataframe(filename, dropbox_path, dbx_app)
 
 
 @st.cache
 def st_load_metadata():
     dbx_app = st_dropbox_connect()
-    return data_loader.dbx_load_metadata(dbx_app)
+    return load.dbx_load_metadata(dbx_app)
 
 
 @st.cache
 def st_load_geo_metadata():
     dbx_app = st_dropbox_connect()
-    return data_loader.dbx_load_geo_metadata(dbx_app)
+    return load.dbx_load_geo_metadata(dbx_app)
 
 
 @st.cache(allow_output_mutation=True)
 def st_load_annotations(filename):
     dbx_app = st_dropbox_connect()
-    return data_loader.dbx_load_label_annotations(filename, dbx_app)
+    return load.dbx_load_label_annotations(filename, dbx_app)
 
 
 @st.cache(allow_output_mutation=True)
@@ -135,7 +135,7 @@ def st_load_photo(
 ):
     dbx_app = st_dropbox_connect()
     dbx_path = f"{DROPBOX_RAW_PHOTOS_ROOT}/{folder_name}"
-    return data_loader.dbx_load_photo(
+    return load.dbx_load_photo(
         photo_name, dbx_path, dbx_app, greyscale_only=greyscale_only
     )
 
@@ -151,7 +151,7 @@ def st_load_photo_from_roof_id(
     dbx_app = st_dropbox_connect()
     dbx_path = f"{DROPBOX_RAW_PHOTOS_ROOT}/{chosen_folder}"
 
-    return data_loader.dbx_load_photos_from_roof_id(
+    return load.dbx_load_photos_from_roof_id(
         roof_id, metadata, dbx_path, dbx_app, bgr_only, greyscale_only
     )
 
