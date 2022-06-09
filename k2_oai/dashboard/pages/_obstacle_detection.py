@@ -3,7 +3,6 @@ Dashboard mode to explore the OpenCV pipeline for obstacle detection and annotat
 hyperparameters of each photo
 """
 
-import matplotlib.pyplot as plt
 import streamlit as st
 
 from k2_oai.dashboard import utils
@@ -118,7 +117,7 @@ def obstacle_detection_page(
             annotations_data=all_annotations,
             annotations_savefile=st.session_state[key_annotations_file],
             roof_id=chosen_roof_id,
-            folder=chosen_folder,
+            photos_folder=chosen_folder,
             metadata=obstacles_metadata,
             key_annotations_cache=key_annotations_cache,
             mode=mode,
@@ -128,11 +127,7 @@ def obstacle_detection_page(
     # | Roof & Color Histograms |
     # +-------------------------+
 
-    _, greyscale_roof, _, _ = utils.st_load_photo_and_roof(
-        int(chosen_roof_id), obstacles_metadata, chosen_folder, as_greyscale=True
-    )
-
-    _photo, roof, labelled_photo, _labelled_roof = utils.st_load_photo_and_roof(
+    photo, roof, labelled_photo, _labelled_roof = utils.st_load_photo_and_roof(
         int(chosen_roof_id), obstacles_metadata, chosen_folder
     )
 
@@ -142,7 +137,7 @@ def obstacle_detection_page(
         obstacles_coordinates,
         filtered_gs_roof,
     ) = utils.obstacle_detection_pipeline(
-        greyscale_roof=greyscale_roof,
+        roof=roof,
         sigma=chosen_sigma,
         filtering_method=chosen_filtering_method,
         binarization_method=chosen_binarisation_method,
@@ -157,48 +152,21 @@ def obstacle_detection_page(
     else:
         st.warning(f"Roof {chosen_roof_id} is not annotated")
 
-    st_roof, st_histograms = st.columns((1, 1))
+    st_roof, st_labelled_roof = st.columns((1, 1))
 
-    # original roof
-    # -------------
     st_roof.image(
+        photo,
+        use_column_width=True,
+        channels="BGRA",
+        caption="Satellite photo",
+    )
+
+    st_labelled_roof.image(
         labelled_photo,
         use_column_width=True,
         channels="BGRA",
-        caption="Original image with database labels",
+        caption="Satellite photo, labelled",
     )
-
-    # RGB color histogram
-    # -------------------
-    fig, ax = plt.subplots(figsize=(3, 1))
-
-    n, bins, patches = ax.hist(
-        roof[:, :, 0].flatten(), bins=50, edgecolor="blue", alpha=0.5
-    )
-    n, bins, patches = ax.hist(
-        roof[:, :, 1].flatten(), bins=50, edgecolor="green", alpha=0.5
-    )
-    n, bins, patches = ax.hist(
-        roof[:, :, 2].flatten(), bins=50, edgecolor="red", alpha=0.5
-    )
-
-    ax.set_title("Cropped Roof RGB Histogram")
-    ax.set_xlim(0, 255)
-
-    st_histograms.pyplot(fig, use_column_width=True)
-
-    # greyscale histogram
-    # -------------------
-    fig, ax = plt.subplots(figsize=(3, 1))
-
-    n, bins, patches = ax.hist(
-        filtered_gs_roof.flatten(), bins=range(256), edgecolor="black", alpha=0.9
-    )
-
-    ax.set_title("Roof Greyscale Histogram After Filtering")
-    ax.set_xlim(0, 255)
-
-    st_histograms.pyplot(fig, use_column_width=True)
 
     # +--------------------+
     # | Plot Model Results |

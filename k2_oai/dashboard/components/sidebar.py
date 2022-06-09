@@ -205,7 +205,7 @@ def choose_annotations_checkpoint(
 
     if annotations_file is None:
         return None
-    return utils.st_load_annotations(annotations_file)
+    return utils.st_load_annotations(annotations_file).convert_dtypes()
 
 
 def choose_to_show_only_annotated_roofs(
@@ -235,7 +235,7 @@ def write_and_save_annotations(
     annotations_data: DataFrame,
     annotations_savefile: str,
     roof_id: int,
-    folder: str,
+    photos_folder: str,
     metadata: DataFrame,
     key_annotations_cache: str,
     mode: str,
@@ -253,10 +253,17 @@ def write_and_save_annotations(
         "📝",
         help="Write the annotations to the dataset",
         on_click=utils.annotate_labels,
-        args=(new_annotations, key_annotations_cache, roof_id, folder, metadata, mode),
+        args=(
+            new_annotations,
+            key_annotations_cache,
+            roof_id,
+            photos_folder,
+            metadata,
+            mode,
+        ),
     )
 
-    savefile = st.text_input(
+    savefile_name = st.text_input(
         label="Name of the file to save new annotations to:",
         value=annotations_savefile,
         help="Defaults to the same filename as the file you load "
@@ -264,18 +271,18 @@ def write_and_save_annotations(
         key="savefile_name",
     )
 
-    if savefile == annotations_savefile:
-        st.warning(f"This will overwrite {annotations_savefile}!")
-
-    use_checkpoints = st.radio(
-        label="Save the annotations as a checkpoint",
+    use_timestamp = st.radio(
+        label="Save the annotations with a timestamp",
         options=[True, False],
         index=1,
         help="The file will be saved with a timestamp",
-        key="use_checkpoints",
+        key="use_timestamp",
     )
 
-    filename = utils.make_filename(savefile, use_checkpoints)
+    filename = utils.make_filename(savefile_name, use_timestamp)
+
+    if filename == annotations_savefile:
+        st.warning(f"This will overwrite {annotations_savefile}!")
 
     if st_save.button("💾", help=f"Save annotations to {filename}"):
         utils.st_save_annotations(

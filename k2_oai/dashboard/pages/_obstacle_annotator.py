@@ -60,8 +60,8 @@ def obstacle_annotator_page(
             """
         )
 
-        is_trainable = st.radio(
-            label="Can the photo be used for training?",
+        is_perfectly_labelled = st.radio(
+            label="Is the photo perfectly labelled?",
             options=[0, 1],
             index=0,
             help="0 means no, 1 means yes",
@@ -101,7 +101,7 @@ def obstacle_annotator_page(
         )
 
         label_annotations = {
-            "is_trainable": is_trainable,
+            "is_perfectly_labelled": is_perfectly_labelled,
             "is_roof": is_roof,
             "roof_well_cropped": roof_well_cropped,
             "obstacles_well_cropped": obstacles_well_cropped,
@@ -114,7 +114,7 @@ def obstacle_annotator_page(
             annotations_data=all_annotations,
             annotations_savefile=st.session_state[key_annotations_file],
             roof_id=chosen_roof_id,
-            folder=st.session_state[key_photos_folder],
+            photos_folder=st.session_state[key_photos_folder],
             metadata=obstacles_metadata,
             key_annotations_cache=key_annotations_cache,
             mode=mode,
@@ -124,8 +124,15 @@ def obstacle_annotator_page(
     # | Load and plot the roof |
     # +------------------------+
 
+    roof_id_label = all_annotations.loc[
+        lambda df: df.roof_id == chosen_roof_id, "is_perfectly_labelled"
+    ].values[0]
+
     if chosen_roof_id in all_annotations.roof_id.values:
-        st.info(f"Roof {chosen_roof_id} is already annotated")
+        st.info(
+            f"Roof {chosen_roof_id} is already annotated as "
+            f"{'`perfectly labelled`' if roof_id_label else '`not perfectly labelled`'}"
+        )
     else:
         st.warning(f"Roof {chosen_roof_id} is not annotated")
 

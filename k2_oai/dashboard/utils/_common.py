@@ -6,6 +6,7 @@ from datetime import datetime
 
 import pandas as pd
 import streamlit as st
+from numpy import ndarray
 from pandas import DataFrame
 
 from k2_oai.obstacle_detection import (
@@ -23,17 +24,17 @@ __all__ = [
 
 
 def obstacle_detection_pipeline(
-    greyscale_roof,
-    sigma,
+    roof: ndarray,
+    sigma: int,
     filtering_method,
-    binarization_method,
+    binarization_method: str,
     blocksize,
     tolerance,
     boundary_type,
     return_filtered_roof: bool = False,
 ):
 
-    filtered_roof = filtering_step(greyscale_roof, sigma, filtering_method.lower())
+    filtered_roof = filtering_step(roof, sigma, filtering_method.lower())
 
     if binarization_method == "Simple":
         binarized_roof = binarization_step(filtered_roof, method="s")
@@ -52,7 +53,7 @@ def obstacle_detection_pipeline(
 
     blobs, roof_with_bboxes, obstacles_coordinates = detect_obstacles(
         blurred_roof=blurred_roof,
-        source_image=greyscale_roof,
+        source_image=roof,
         box_or_polygon=boundary_type,
         min_area="auto",
     )
@@ -110,7 +111,7 @@ def annotate_labels(
                 **marks,
             }
         ]
-    ).astype({"roof_id": float, **marks_dtypes})
+    ).astype({"roof_id": int, **marks_dtypes})
 
     st.session_state[session_state_key] = (
         pd.concat([st.session_state[session_state_key], new_row], ignore_index=True)
