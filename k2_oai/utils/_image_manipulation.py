@@ -260,7 +260,7 @@ def rotate_and_crop_roof(input_image: ndarray, roof_coordinates: str) -> ndarray
         )
         mask = np.zeros(input_image.shape[0:2], dtype="uint8")
 
-        pts = np.array(coord, np.int8).reshape((-1, 1, 2))
+        pts = np.array(coord, np.int32).reshape((-1, 1, 2))
 
         cv.fillConvexPoly(mask, pts, (255, 255, 255))
 
