@@ -12,7 +12,16 @@ from k2_oai.dashboard.components import sidebar
 __all__ = ["metadata_explorer_page"]
 
 
-def metadata_explorer_page():
+def metadata_explorer_page(
+    mode: str = "labels",
+    geo_metadata: bool = True,
+    only_folders: bool = False,
+    key_photos_folder: str = "key_photos_folder",
+    key_drop_duplicates: str = "drop_duplicates",
+    key_annotations_only: str = "metadata_annotations_only",
+    key_annotations_cache: str = "metadata_annotations",
+    key_annotations_file: str = "metadata_annotations_file",
+):
     st.title(":bar_chart: Metadata Explorer")
 
     # +------------------------------+
@@ -21,13 +30,20 @@ def metadata_explorer_page():
 
     with st.sidebar:
 
-        chosen_folder, obstacles_metadata, photos_list = sidebar.config_photo_folder(
-            geo_metadata=True, only_folders=False
+        obstacles_metadata, _, _ = sidebar.configure_data(
+            key_photos_folder=key_photos_folder,
+            key_drop_duplicates=key_drop_duplicates,
+            key_annotations_cache=key_annotations_cache,
+            key_annotations_file=key_annotations_file,
+            key_annotations_only=key_annotations_only,
+            mode=mode,
+            geo_metadata=geo_metadata,
+            only_folders=only_folders,
         )
 
         roofs_metadata = obstacles_metadata.drop_duplicates(subset="roof_id")
 
-        sidebar.count_duplicates(obstacles_metadata, photos_list)
+        chosen_folder = st.session_state[key_photos_folder]
 
     # +---------------+
     # | Zoom Levels   |
@@ -169,27 +185,3 @@ def metadata_explorer_page():
     )
 
     st_plot.altair_chart(fig, use_container_width=True)
-
-    #
-    # background = (
-    #     alt.Chart(world)
-    #     .mark_geoshape(fill="lightgray", stroke="white")
-    #     .properties(width=1000, height=500)
-    #     .project("mercator")
-    # )
-    #
-    # points = (
-    #     alt.Chart(metadata)
-    #     .mark_circle()
-    #     .encode(
-    #         longitude="lon:Q",
-    #         latitude="lat:Q",
-    #         color="zoom:N",
-    #         # size="zoom:N",
-    #         tooltip=["zoom"],
-    #     )
-    # )
-    #
-    # fig = background + points
-    #
-    # st.altair_chart(fig, use_container_width=True)

@@ -13,7 +13,14 @@ __all__ = ["obstacle_detection_page"]
 
 
 def obstacle_detection_page(
-    session_state_key="hyperparam_annotations", mode="hyperparams"
+    mode: str = "hyperparameters",
+    geo_metadata: bool = False,
+    only_folders: bool = True,
+    key_photos_folder: str = "photos_folder",
+    key_drop_duplicates: str = "drop_duplicates",
+    key_annotations_only: str = "hyperparams_annotations_only",
+    key_annotations_cache: str = "hyperparams_annotations",
+    key_annotations_file: str = "hyperparams_annotations_file",
 ):
     st.title(":house_with_garden: Obstacle Detection Dashboard")
 
@@ -23,17 +30,18 @@ def obstacle_detection_page(
         # | select data sources |
         # +---------------------+
 
-        chosen_folder, obstacles_metadata, photo_list = sidebar.config_photo_folder()
-
-        sidebar.count_duplicates(obstacles_metadata, photo_list)
-
-        chosen_annotations_file = sidebar.config_annotations(mode=mode)
-
-        annotated_roofs, remaining_roofs, all_annotations = sidebar.config_cache(
-            session_state_key=session_state_key,
-            metadata=obstacles_metadata,
-            annotations_file=chosen_annotations_file,
+        obstacles_metadata, all_annotations, remaining_roofs = sidebar.configure_data(
+            key_photos_folder=key_photos_folder,
+            key_drop_duplicates=key_drop_duplicates,
+            key_annotations_cache=key_annotations_cache,
+            key_annotations_file=key_annotations_file,
+            key_annotations_only=key_annotations_only,
+            mode=mode,
+            geo_metadata=geo_metadata,
+            only_folders=only_folders,
         )
+
+        chosen_folder = st.session_state[key_photos_folder]
 
         chosen_roof_id = buttons.choose_roof_id(obstacles_metadata, remaining_roofs)
 
@@ -43,7 +51,13 @@ def obstacle_detection_page(
 
         st.markdown("## :control_knobs: Model Hyperparameters")
 
-        st.info(f"Roofs annotated so far: {annotated_roofs.shape[0]}")
+        annotations_cache = st.session_state[key_annotations_cache]
+
+        st.info(
+            f"Roofs annotated so far: {annotations_cache.shape[0]} "
+            f"Roofs annotated in {st.session_state[key_annotations_file]}:"
+            f"{all_annotations.shape[0]}"
+        )
 
         chosen_sigma = st.slider(
             "Filtering sigma (positive, odd integer):",
@@ -102,11 +116,11 @@ def obstacle_detection_page(
         sidebar.write_and_save_annotations(
             new_annotations=annotations,
             annotations_data=all_annotations,
-            annotations_savefile=chosen_annotations_file,
+            annotations_savefile=st.session_state[key_annotations_file],
             roof_id=chosen_roof_id,
             folder=chosen_folder,
             metadata=obstacles_metadata,
-            session_state_key=session_state_key,
+            key_annotations_cache=key_annotations_cache,
             mode=mode,
         )
 

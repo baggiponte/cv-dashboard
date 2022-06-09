@@ -1,11 +1,15 @@
 """
 Dashboard components, preferably for the sidebar, to select data sources and save data.
 """
+
+from __future__ import annotations
+
 from typing import Any
 
 import pandas as pd
 import streamlit as st
-from pandas import DataFrame
+from numpy import ndarray
+from pandas import DataFrame, Series
 
 from k2_oai.dashboard import utils
 from k2_oai.dropbox import (
@@ -14,10 +18,80 @@ from k2_oai.dropbox import (
     DROPBOX_RAW_PHOTOS_ROOT,
 )
 
-__all__ = ["config_photo_folder", "config_annotations"]
+__all__ = [
+    "configure_data",
+    "choose_folder_to_load_metadata",
+    "choose_annotations_checkpoint",
+    "write_and_save_annotations",
+]
 
 
-def config_photo_folder(geo_metadata: bool = False, only_folders: bool = True):
+def configure_data(
+    mode: str,
+    key_photos_folder: str,
+    key_drop_duplicates: str,
+    key_annotations_cache: str,
+    key_annotations_file: str,
+    key_annotations_only: str,
+    geo_metadata: bool = False,
+    only_folders: bool = True,
+) -> tuple[DataFrame, DataFrame, Series]:
+    """
+    1. Load metadata
+    2. allow to drop duplicates
+    3. set up streamlit cache
+    4. load annotations or not (RENAME checkpoint to None)
+    5. if NO checkpoint, annotations == cache
+    6. if using source, annotations == cache + source
+    7. filter only labelled image wrt source file
+    """
+
+    obstacles_metadata, _photo_list = choose_folder_to_load_metadata(
+        key_photos_folder,
+        key_drop_duplicates,
+        geo_metadata,
+        only_folders,
+    )
+
+    # configure cache
+    if key_annotations_cache not in st.session_state:
+        st.session_state[key_annotations_cache] = pd.DataFrame(
+            columns=["roof_id", "annotation_time"]
+        )
+
+    cached_annotations = st.session_state[key_annotations_cache]
+
+    loaded_annotations = choose_annotations_checkpoint(key_annotations_file, mode)
+
+    if loaded_annotations is None:
+        all_annotations = cached_annotations
+    else:
+        all_annotations = (
+            pd.concat([loaded_annotations, cached_annotations], ignore_index=True)
+            .sort_values("roof_id")
+            .reset_index(drop=True)
+            .drop_duplicates(subset=["roof_id", "annotation_time"], keep="last")
+        )
+
+    remaining_roofs = obstacles_metadata.loc[
+        lambda df: ~df.roof_id.isin(all_annotations.roof_id.values), "roof_id"
+    ].unique()
+
+    # filter only annotated photos
+    obstacles_metadata = choose_to_show_only_annotated_roofs(
+        obstacles_metadata,
+        all_annotations,
+        key_annotations_only,
+    )
+    return obstacles_metadata, all_annotations, remaining_roofs
+
+
+def choose_folder_to_load_metadata(
+    key_photos_folder: str,
+    key_drop_duplicates: str,
+    geo_metadata: bool = False,
+    only_folders: bool = True,
+) -> tuple[DataFrame, DataFrame]:
 
     st.markdown("## :open_file_folder: Photos Folder")
 
@@ -32,7 +106,7 @@ def config_photo_folder(geo_metadata: bool = False, only_folders: bool = True):
         "Select the folder to load the photos from:",
         options=photos_folders,
         index=0,
-        key="photos_folder",
+        key=key_photos_folder,
     )
 
     obstacles_metadata, photo_list = utils.st_load_photo_list_and_metadata(
@@ -40,11 +114,37 @@ def config_photo_folder(geo_metadata: bool = False, only_folders: bool = True):
         geo_metadata=geo_metadata,
     )
 
-    return chosen_folder, obstacles_metadata, photo_list
+    obstacles_metadata = choose_to_drop_duplicates(
+        obstacles_metadata, photo_list, key_drop_duplicates
+    )
+
+    return obstacles_metadata, photo_list
 
 
-def count_duplicates(obstacles_metadata, photo_list):
+def choose_to_drop_duplicates(
+    obstacles_metadata: DataFrame,
+    photo_list: Series | ndarray,
+    key_drop_duplicates: str,
+) -> DataFrame:
+    st.checkbox("Drop duplicate roofs", key=key_drop_duplicates)
 
+    view_duplicates_count(
+        obstacles_metadata,
+        photo_list,
+    )
+
+    if st.session_state[key_drop_duplicates]:
+        obstacles_metadata = obstacles_metadata.drop_duplicates(
+            subset=["imageURL", "pixelCoordinates_obstacle"]
+        )
+
+    return obstacles_metadata
+
+
+def view_duplicates_count(
+    obstacles_metadata: DataFrame,
+    photo_list: Series | ndarray,
+):
     total_obst = obstacles_metadata.pixelCoordinates_obstacle.notna().shape[0]
     unique_obst = obstacles_metadata.drop_duplicates(
         subset=["imageURL", "pixelCoordinates_obstacle"]
@@ -77,7 +177,9 @@ def count_duplicates(obstacles_metadata, photo_list):
     )
 
 
-def config_annotations(mode: str):
+def choose_annotations_checkpoint(
+    key_annotations_file: str, mode: str
+) -> DataFrame | None:
 
     if mode == "labels":
         dropbox_path = DROPBOX_LABEL_ANNOTATIONS_PATH
@@ -93,55 +195,39 @@ def config_annotations(mode: str):
         reverse=True,
     )
 
-    options_files = [file for file in folder_contents if "OLD-" not in file]
-
     annotations_file = st.selectbox(
-        "Load existing annotations or create a new one",
-        options=["New Checkpoint"] + options_files,
-        index=0,
+        "Load a file to source existing annotations:",
+        options=[None] + folder_contents,
+        help="If `None`, no data will be sourced",
+        index=1 if len(folder_contents) > 0 else 0,
+        key=key_annotations_file,
     )
 
-    return annotations_file
+    if annotations_file is None:
+        return None
+    return utils.st_load_annotations(annotations_file)
 
 
-def config_cache(session_state_key, metadata, annotations_file):
+def choose_to_show_only_annotated_roofs(
+    metadata: DataFrame, annotations_data: DataFrame, key_annotations_only: str
+) -> DataFrame:
 
-    if session_state_key not in st.session_state:
-        st.session_state[session_state_key] = pd.DataFrame(
-            columns=["roof_id", "annotation_time"]
-        )
+    if st.checkbox("Show annotated photos only", key=key_annotations_only):
 
-    session_state = st.session_state[session_state_key]
+        metadata = metadata.loc[
+            lambda df: df.roof_id.isin(annotations_data.roof_id.values)
+        ]
 
-    annotated_roofs = session_state.dropna(subset=["annotation_time"]).roof_id.values
-
-    remaining_roofs = metadata.roof_id.loc[
-        lambda df: ~df.isin(annotated_roofs)
-    ].unique()
-
-    if annotations_file == "New Checkpoint":
-        all_annotations = session_state.dropna(subset="annotation_time")
-    else:
-        existing_annotations = utils.st_load_annotations(annotations_file)
-
-        remaining_roofs = metadata.roof_id.loc[
-            lambda df: ~df.isin(existing_annotations.roof_id.unique())
-        ].unique()
-
-        all_annotations = (
-            pd.concat(
-                [
-                    existing_annotations,
-                    session_state.dropna(subset="annotation_time"),
-                ],
-                ignore_index=True,
+        if metadata.empty:
+            st.error(
+                "No photos have been annotated in this session, "
+                "or no photo in this folder were annotated. "
+                "Please uncheck the `Show annotated photos only` checkbox, "
+                "or select a different folder."
             )
-            .sort_values("roof_id")
-            .reset_index(drop=True)
-            .drop_duplicates(subset=["roof_id", "annotation_time"], keep="last")
-        )
+            st.stop()
 
-    return annotated_roofs, remaining_roofs, all_annotations
+    return metadata
 
 
 def write_and_save_annotations(
@@ -151,10 +237,9 @@ def write_and_save_annotations(
     roof_id: int,
     folder: str,
     metadata: DataFrame,
-    session_state_key: str,
+    key_annotations_cache: str,
     mode: str,
 ):
-
     if mode == "labels":
         dropbox_path = DROPBOX_LABEL_ANNOTATIONS_PATH
     elif mode == "hyperparameters" or mode == "hyperparams":
@@ -168,7 +253,7 @@ def write_and_save_annotations(
         "📝",
         help="Write the annotations to the dataset",
         on_click=utils.annotate_labels,
-        args=(new_annotations, session_state_key, roof_id, folder, metadata, mode),
+        args=(new_annotations, key_annotations_cache, roof_id, folder, metadata, mode),
     )
 
     savefile = st.text_input(
@@ -178,6 +263,9 @@ def write_and_save_annotations(
         "- i.e. it will be overwritten. Specifying '.csv' is not necessary",
         key="savefile_name",
     )
+
+    if savefile == annotations_savefile:
+        st.warning(f"This will overwrite {annotations_savefile}!")
 
     use_checkpoints = st.radio(
         label="Save the annotations as a checkpoint",

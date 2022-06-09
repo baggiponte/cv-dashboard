@@ -2,8 +2,6 @@
 Dashboard page/mode to accept or reject the obstacle label available from the database.
 """
 
-from __future__ import annotations
-
 import streamlit as st
 
 from k2_oai.dashboard import utils
@@ -12,7 +10,16 @@ from k2_oai.dashboard.components import buttons, sidebar
 __all__ = ["obstacle_annotator_page"]
 
 
-def obstacle_annotator_page(session_state_key="label_annoatations", mode="labels"):
+def obstacle_annotator_page(
+    mode: str = "labels",
+    geo_metadata: bool = False,
+    only_folders: bool = True,
+    key_photos_folder: str = "photos_folder",
+    key_drop_duplicates: str = "drop_duplicates",
+    key_annotations_only: str = "labels_annotations_only",
+    key_annotations_cache: str = "labels_annotations",
+    key_annotations_file: str = "labels_annotations_file",
+):
     st.title(":mag: Obstacle Annotation Tool")
 
     with st.sidebar:
@@ -21,16 +28,15 @@ def obstacle_annotator_page(session_state_key="label_annoatations", mode="labels
         # | select data sources |
         # +---------------------+
 
-        chosen_folder, obstacles_metadata, photo_list = sidebar.config_photo_folder()
-
-        sidebar.count_duplicates(obstacles_metadata, photo_list)
-
-        chosen_annotations_file = sidebar.config_annotations(mode=mode)
-
-        annotated_roofs, remaining_roofs, all_annotations = sidebar.config_cache(
-            session_state_key=session_state_key,
-            metadata=obstacles_metadata,
-            annotations_file=chosen_annotations_file,
+        obstacles_metadata, all_annotations, remaining_roofs = sidebar.configure_data(
+            key_photos_folder=key_photos_folder,
+            key_drop_duplicates=key_drop_duplicates,
+            key_annotations_cache=key_annotations_cache,
+            key_annotations_file=key_annotations_file,
+            key_annotations_only=key_annotations_only,
+            mode=mode,
+            geo_metadata=geo_metadata,
+            only_folders=only_folders,
         )
 
         chosen_roof_id = buttons.choose_roof_id(obstacles_metadata, remaining_roofs)
@@ -41,7 +47,18 @@ def obstacle_annotator_page(session_state_key="label_annoatations", mode="labels
 
         st.markdown("## :pencil: Mark the annotations")
 
-        st.info(f"Roofs annotated so far: {annotated_roofs.shape[0]}")
+        annotations_cache = st.session_state[key_annotations_cache]
+
+        st.info(
+            f"""
+            Roofs annotated in this session: {annotations_cache.shape[0]}
+
+            Annotations in `{st.session_state[key_annotations_file]}`:
+            {all_annotations.shape[0] - annotations_cache.shape[0]}
+
+            Total annotations: {all_annotations.shape[0]}
+            """
+        )
 
         is_trainable = st.radio(
             label="Can the photo be used for training?",
@@ -83,7 +100,7 @@ def obstacle_annotator_page(session_state_key="label_annoatations", mode="labels
             index=0,
         )
 
-        annotations = {
+        label_annotations = {
             "is_trainable": is_trainable,
             "is_roof": is_roof,
             "roof_well_cropped": roof_well_cropped,
@@ -93,13 +110,13 @@ def obstacle_annotator_page(session_state_key="label_annoatations", mode="labels
         }
 
         sidebar.write_and_save_annotations(
-            new_annotations=annotations,
+            new_annotations=label_annotations,
             annotations_data=all_annotations,
-            annotations_savefile=chosen_annotations_file,
+            annotations_savefile=st.session_state[key_annotations_file],
             roof_id=chosen_roof_id,
-            folder=chosen_folder,
+            folder=st.session_state[key_photos_folder],
             metadata=obstacles_metadata,
-            session_state_key=session_state_key,
+            key_annotations_cache=key_annotations_cache,
             mode=mode,
         )
 
@@ -115,7 +132,7 @@ def obstacle_annotator_page(session_state_key="label_annoatations", mode="labels
     photo, roof, labelled_photo, labelled_roof = utils.st_load_photo_and_roof(
         int(chosen_roof_id),
         obstacles_metadata,
-        chosen_folder,
+        st.session_state[key_photos_folder],
     )
 
     st_labelled, st_not_labelled = st.columns(2)

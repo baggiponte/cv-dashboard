@@ -32,9 +32,15 @@ def choose_roof_id(metadata, roofs_left_to_annotate):
 
     roofs_list = metadata.roof_id.unique()
 
-    st.markdown("## :house: Roof identifier")
+    st.markdown(
+        f"""
+        ## :house: Roof identifier
 
-    st.write("Choose a roof id manually...")
+        There are `{roofs_list.shape[0]}` roofs available with these settings.
+
+        Choose a roof id manually...
+        """
+    )
     chosen_roof_id = st.selectbox(
         "Roof identifier:",
         options=roofs_list,

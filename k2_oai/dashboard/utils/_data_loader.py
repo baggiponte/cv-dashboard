@@ -11,7 +11,7 @@ import streamlit as st
 from k2_oai import dropbox as dbx
 from k2_oai.data import load
 from k2_oai.dropbox import DROPBOX_RAW_PHOTOS_ROOT
-from k2_oai.utils import (  # , experimental_draw_labels
+from k2_oai.utils import (
     draw_labels_on_cropped_roof,
     draw_labels_on_photo,
     rotate_and_crop_roof,
@@ -111,7 +111,7 @@ def st_load_photo_list(photos_folder):
 
 @st.cache
 def st_load_photo_list_and_metadata(
-    photos_folder=None,
+    photos_folder: str | None = None,
     geo_metadata: bool = False,
 ):
     if geo_metadata:
