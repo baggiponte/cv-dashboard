@@ -17,7 +17,7 @@ def obstacle_detection_page(
     only_folders: bool = True,
     key_photos_folder: str = "photos_folder",
     key_drop_duplicates: str = "drop_duplicates",
-    key_annotations_only: str = "hyperparams_annotations_only",
+    key_annotations_only: str = "annotations_only",
     key_annotations_cache: str = "hyperparams_annotations",
     key_annotations_file: str = "hyperparams_annotations_file",
 ):

@@ -16,7 +16,7 @@ def obstacle_annotator_page(
     only_folders: bool = True,
     key_photos_folder: str = "photos_folder",
     key_drop_duplicates: str = "drop_duplicates",
-    key_annotations_only: str = "labels_annotations_only",
+    key_annotations_only: str = "annotations_only",
     key_annotations_cache: str = "labels_annotations",
     key_annotations_file: str = "labels_annotations_file",
 ):
@@ -148,14 +148,14 @@ def obstacle_annotator_page(
         st.image(
             labelled_roof,
             use_column_width=True,
-            channels="BGR",
+            channels="BGRA",
             caption="Labelled Roof",
         )
 
         st.image(
             labelled_photo,
             use_column_width=True,
-            channels="BGR",
+            channels="BGRA",
             caption="Cropped roof",
         )
 
@@ -163,14 +163,14 @@ def obstacle_annotator_page(
         st.image(
             roof,
             use_column_width=True,
-            channels="BGR",
+            channels="BGRA",
             caption="Original image, labelled",
         )
 
         st.image(
             photo,
             use_column_width=True,
-            channels="BGR",
+            channels="BGRA",
             caption="Original image",
         )
 
