@@ -28,7 +28,7 @@ def _change_roof_id(how: str, roofs_list):
         raise ValueError(f"Invalid `how`: {how}. Must be `next` or `previous`.")
 
 
-def choose_roof_id(metadata, roofs_left_to_annotate):
+def choose_roof_id(metadata, remaining_roofs):
 
     roofs_list = metadata.roof_id.unique()
 
@@ -41,6 +41,7 @@ def choose_roof_id(metadata, roofs_left_to_annotate):
         Choose a roof id manually...
         """
     )
+
     chosen_roof_id = st.selectbox(
         "Roof identifier:",
         options=roofs_list,
@@ -64,7 +65,7 @@ def choose_roof_id(metadata, roofs_left_to_annotate):
         "🔀",
         help="Load a random photo that was not labelled yet",
         on_click=_load_random_photo,
-        args=(roofs_left_to_annotate,),
+        args=(remaining_roofs,),
     )
 
     st_next.button(

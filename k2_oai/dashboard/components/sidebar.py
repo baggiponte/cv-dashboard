@@ -73,16 +73,30 @@ def configure_data(
             .drop_duplicates(subset=["roof_id", "annotation_time"], keep="last")
         )
 
-    remaining_roofs = obstacles_metadata.loc[
-        lambda df: ~df.roof_id.isin(all_annotations.roof_id.values), "roof_id"
+    remaining_roofs = obstacles_metadata.roof_id.loc[
+        lambda df: ~df.isin(all_annotations.roof_id.values)
     ].unique()
 
     # filter only annotated photos
-    obstacles_metadata = choose_to_show_only_annotated_roofs(
-        obstacles_metadata,
-        all_annotations,
-        key_annotations_only,
-    )
+    if st.checkbox("Show annotated photos only", key=key_annotations_only):
+
+        obstacles_metadata = obstacles_metadata.loc[
+            lambda df: df.roof_id.isin(all_annotations.roof_id.values)
+        ]
+
+        if obstacles_metadata.empty:
+            st.error(
+                "No photos have been annotated in this session, "
+                "or no photo in this folder were annotated. "
+                "Please uncheck the `Show annotated photos only` checkbox, "
+                "or select a different folder."
+            )
+            st.stop()
+
+        remaining_roofs = obstacles_metadata.roof_id.loc[
+            lambda df: df.isin(all_annotations.roof_id.values)
+        ]
+
     return obstacles_metadata, all_annotations, remaining_roofs
 
 
@@ -206,28 +220,6 @@ def choose_annotations_checkpoint(
     if annotations_file is None:
         return None
     return utils.st_load_annotations(annotations_file).convert_dtypes()
-
-
-def choose_to_show_only_annotated_roofs(
-    metadata: DataFrame, annotations_data: DataFrame, key_annotations_only: str
-) -> DataFrame:
-
-    if st.checkbox("Show annotated photos only", key=key_annotations_only):
-
-        metadata = metadata.loc[
-            lambda df: df.roof_id.isin(annotations_data.roof_id.values)
-        ]
-
-        if metadata.empty:
-            st.error(
-                "No photos have been annotated in this session, "
-                "or no photo in this folder were annotated. "
-                "Please uncheck the `Show annotated photos only` checkbox, "
-                "or select a different folder."
-            )
-            st.stop()
-
-    return metadata
 
 
 def write_and_save_annotations(
