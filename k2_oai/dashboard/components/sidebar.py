@@ -78,10 +78,14 @@ def configure_data(
     ].unique()
 
     # filter only annotated photos
-    if st.checkbox("Show annotated photos only", key=key_annotations_only):
+    if st.checkbox("Only show well-labelled roofs", key=key_annotations_only):
+
+        well_labelled_roofs = all_annotations.loc[
+            lambda df: df["is_perfectly_labelled"] == 1
+        ]
 
         obstacles_metadata = obstacles_metadata.loc[
-            lambda df: df.roof_id.isin(all_annotations.roof_id.values)
+            lambda df: df.roof_id.isin(well_labelled_roofs.roof_id.values)
         ]
 
         if obstacles_metadata.empty:
