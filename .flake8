@@ -6,7 +6,4 @@ extend-ignore = E203
 exclude =
     .git,
     __pycache__,
-    k2_oai/*/__init__.py
-
-[tool:pytest]
-testpaths = tests
+    __init__.py

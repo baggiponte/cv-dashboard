@@ -18,7 +18,7 @@ from __future__ import annotations
 
 import cv2 as cv
 import numpy as np
-from numpy.core.multiarray import ndarray
+from numpy import ndarray
 
 from k2_oai.utils import is_positive_odd_integer, is_valid_method, pad_image
 

@@ -1,1 +1,3 @@
-from .sidebar import sidebar_chose_photo_folder
+"""
+Recurrent UI elements for the dashboard.
+"""

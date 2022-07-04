@@ -2,7 +2,8 @@ import os
 
 import streamlit as st
 
-from k2_oai.dashboard import pages, utils
+from k2_oai.dashboard import pages
+from k2_oai.dashboard.components import login
 
 
 def main():
@@ -18,53 +19,28 @@ def main():
         if "DROPBOX_ACCESS_TOKEN" in os.environ:
             st.session_state["access_token"] = os.environ.get("DROPBOX_ACCESS_TOKEN")
         else:
-            st_oauth_text_boxes, oauth_result = utils.st_dropbox_oauth2_connect()
+            st_oauth_text_boxes, oauth_result = login.dropbox_oauth2_connect()
             if oauth_result is not None:
                 st.session_state["access_token"] = oauth_result.access_token
                 st.session_state["refresh_token"] = oauth_result.refresh_token
 
     if "access_token" in st.session_state:
         st_oauth_text_boxes.empty()
-        readme_text = st.markdown(
-            """
-        # :house: Welcome!
 
-        This is OAI's dashboard to explore the image segmentation models designed to
-        detect obstacles on satellite images. The dashboard has the following modes:
-
-        * `Instructions` is this page.
-        * `Data Explorer` is an interface to perform exploratory data analysis.
-        * `Obstacle Annotation Tool` us a tool to annotate images and create new labels.
-        * `Obstacle Detection` is the interface to explore the image segmentation model.
-
-        """
-        )
+        pages_options = {
+            "Welcome": pages.welcome_page,
+            "Metadata Explorer": pages.metadata_explorer_page,
+            "Obstacle Annotation Tool": pages.obstacle_annotator_page,
+            "Obstacle Detection": pages.obstacle_detection_page,
+        }
 
         st.sidebar.title(":gear: Settings")
         app_mode = st.sidebar.selectbox(
             "Which interface would you like to use?",
-            (
-                "Instructions",
-                "Metadata Explorer",
-                "Obstacle Annotation Tool",
-                "Obstacle Detection",
-            ),
+            options=pages_options.keys(),
         )
 
-        if app_mode == "Instructions":
-            st.sidebar.success("Choose a mode from the sidebar to get started.")
-        elif app_mode == "Obstacle Detection":
-            readme_text.empty()
-            st.sidebar.markdown("___")
-            pages.obstacle_detection_page()
-        elif app_mode == "Obstacle Annotation Tool":
-            readme_text.empty()
-            st.sidebar.markdown("___")
-            pages.obstacle_annotator_page()
-        elif app_mode == "Metadata Explorer":
-            readme_text.empty()
-            st.sidebar.markdown("___")
-            pages.metadata_explorer_page()
+        pages_options[app_mode]()
 
 
 if __name__ == "__main__":

@@ -7,15 +7,21 @@ import altair as alt
 import numpy as np
 import streamlit as st
 
-from k2_oai.dashboard import utils
+from k2_oai.dashboard.components import sidebar
 
 __all__ = ["metadata_explorer_page"]
 
-from k2_oai.io.dropbox_paths import DROPBOX_RAW_PHOTOS_ROOT
 
-
-def metadata_explorer_page():
-
+def metadata_explorer_page(
+    mode: str = "labels",
+    geo_metadata: bool = True,
+    only_folders: bool = False,
+    key_photos_folder: str = "key_photos_folder",
+    key_drop_duplicates: str = "drop_duplicates",
+    key_annotations_only: str = "metadata_annotations_only",
+    key_annotations_cache: str = "metadata_annotations",
+    key_annotations_file: str = "metadata_annotations_file",
+):
     st.title(":bar_chart: Metadata Explorer")
 
     # +------------------------------+
@@ -24,37 +30,20 @@ def metadata_explorer_page():
 
     with st.sidebar:
 
-        st.markdown("## :open_file_folder: Photos Folder")
-
-        # get options for `chosen_folder`
-        photos_folders = sorted(
-            file
-            for file in utils.st_list_contents_of(
-                DROPBOX_RAW_PHOTOS_ROOT
-            ).item_name.values
-            if not file.endswith(".csv")
+        obstacles_metadata, _, _ = sidebar.configure_data(
+            key_photos_folder=key_photos_folder,
+            key_drop_duplicates=key_drop_duplicates,
+            key_annotations_cache=key_annotations_cache,
+            key_annotations_file=key_annotations_file,
+            key_annotations_only=key_annotations_only,
+            mode=mode,
+            geo_metadata=geo_metadata,
+            only_folders=only_folders,
         )
 
-        chosen_folder = st.selectbox(
-            "Select the folder to load the photos from:",
-            options=[None] + photos_folders,
-            index=0,
-            key="photos_folder",
-        )
+        roofs_metadata = obstacles_metadata.drop_duplicates(subset="roof_id")
 
-        photos_metadata, photo_list = utils.st_load_photo_list_and_metadata(
-            photos_folder=chosen_folder,
-            photos_root_path=DROPBOX_RAW_PHOTOS_ROOT,
-            geo_metadata=True,
-        )
-
-        st.info(
-            f"""
-            Available photos: {photo_list.shape[0]}
-
-            Unique roof ids: {photos_metadata.roof_id.unique().shape[0]}
-            """
-        )
+        chosen_folder = st.session_state[key_photos_folder]
 
     # +---------------+
     # | Zoom Levels   |
@@ -83,8 +72,7 @@ def metadata_explorer_page():
         )
 
     zoom_levels_by_continent = (
-        photos_metadata.drop_duplicates("roof_id")
-        .groupby(["continent", "zoom"])
+        roofs_metadata.groupby(["continent", "zoom"])
         .size()
         .reset_index()
         .rename(
@@ -101,6 +89,8 @@ def metadata_explorer_page():
             )
         )
     )
+
+    continents = zoom_levels_by_continent.Continent.unique()
 
     fig = (
         alt.Chart(zoom_levels_by_continent)
@@ -121,14 +111,13 @@ def metadata_explorer_page():
     # +-------------------------+
 
     with st.expander("Inspect zoom levels by continent"):
-
         st_plot, st_selector = st.columns((3, 1))
 
         st_selector.selectbox(
             "Select a continent",
-            options=(zoom_levels_by_continent.Continent.unique()),
+            options=continents,
             key="continent_detail",
-            index=2,
+            index=2 if len(continents) > 2 else 0,
         )
 
         fig = (
@@ -152,8 +141,7 @@ def metadata_explorer_page():
     st.subheader("Zoom Level Distribution by Country")
 
     zoom_levels_by_country = (
-        photos_metadata.drop_duplicates("roof_id")
-        .groupby(["continent", "name", "zoom"])
+        roofs_metadata.groupby(["continent", "name", "zoom"])
         .size()
         .reset_index()
         .rename(
@@ -176,9 +164,9 @@ def metadata_explorer_page():
 
     st_selector.selectbox(
         "Select a continent",
-        options=(zoom_levels_by_country.Continent.unique()),
+        options=continents,
         key="continent_selector",
-        index=2,
+        index=2 if len(continents) > 2 else 0,
     )
 
     fig = (
@@ -197,27 +185,3 @@ def metadata_explorer_page():
     )
 
     st_plot.altair_chart(fig, use_container_width=True)
-
-    #
-    # background = (
-    #     alt.Chart(world)
-    #     .mark_geoshape(fill="lightgray", stroke="white")
-    #     .properties(width=1000, height=500)
-    #     .project("mercator")
-    # )
-    #
-    # points = (
-    #     alt.Chart(metadata)
-    #     .mark_circle()
-    #     .encode(
-    #         longitude="lon:Q",
-    #         latitude="lat:Q",
-    #         color="zoom:N",
-    #         # size="zoom:N",
-    #         tooltip=["zoom"],
-    #     )
-    # )
-    #
-    # fig = background + points
-    #
-    # st.altair_chart(fig, use_container_width=True)

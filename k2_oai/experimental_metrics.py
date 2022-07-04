@@ -6,7 +6,7 @@ from __future__ import annotations
 import cv2 as cv
 import numpy as np
 from matplotlib import pyplot as plt
-from numpy.core.multiarray import ndarray
+from numpy import ndarray
 
 from k2_oai.utils import _compute_rotation_matrix, experimental_parse_str_as_array
 

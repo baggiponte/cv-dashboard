@@ -24,7 +24,7 @@ __all__ = [
     "dropbox_oauth2_connect",
     "dropbox_connect",
     "dropbox_connect_access_token_only",
-    "dropbox_list_contents_of",
+    "dropbox_listdir",
     "dropbox_upload_file_to",
     "dropbox_download_from",
 ]
@@ -144,7 +144,7 @@ def _parse_dropbox_folder_content(folder_content):
     return files_list
 
 
-def dropbox_list_contents_of(dropbox_app, dropbox_path):
+def dropbox_listdir(dropbox_path, dropbox_app):
     """Return a Pandas dataframe of files in a given Dropbox folder path in the Apps
     directory.
     """
@@ -164,12 +164,17 @@ def dropbox_list_contents_of(dropbox_app, dropbox_path):
     return pd.DataFrame.from_records(files_list)
 
 
-def dropbox_upload_file_to(dropbox_app, file_path_from, file_path_to):
-    with open(file_path_from, "rb") as f:
+def dropbox_upload_file_to(
+    dropbox_app, upload_from, save_to, remove_original: bool = False
+):
+    with open(upload_from, "rb") as f:
         try:
-            dropbox_app.files_upload(f.read(), file_path_to, mode=WriteMode.add)
+            dropbox_app.files_upload(f.read(), save_to, mode=WriteMode.add)
         except ApiError:
-            dropbox_app.files_upload(f.read(), file_path_to, mode=WriteMode.overwrite)
+            dropbox_app.files_upload(f.read(), save_to, mode=WriteMode.overwrite)
+
+    if remove_original:
+        os.remove(upload_from)
 
 
 def dropbox_download_from(dropbox_app, save_to, download_from):

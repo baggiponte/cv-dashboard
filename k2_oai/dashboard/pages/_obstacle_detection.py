@@ -3,162 +3,75 @@ Dashboard mode to explore the OpenCV pipeline for obstacle detection and annotat
 hyperparameters of each photo
 """
 
-import matplotlib.pyplot as plt
-import numpy as np
 import streamlit as st
 
-from k2_oai.dashboard import components, utils
-from k2_oai.io.dropbox_paths import DROPBOX_HYPERPARAM_ANNOTATIONS_PATH
+from k2_oai.dashboard import utils
+from k2_oai.dashboard.components import buttons, sidebar
 
 __all__ = ["obstacle_detection_page"]
 
 
-def annotate_hyperparameters(
-    roof_id,
-    label_data,
-    sigma,
-    filtering_method,
-    binarization_method,
-    bin_adaptive_kernel,
-    bin_composite_tolerance,
-    drawing_technique,
+def obstacle_detection_page(
+    mode: str = "hyperparameters",
+    geo_metadata: bool = False,
+    only_folders: bool = True,
+    key_photos_folder: str = "photos_folder",
+    key_drop_duplicates: str = "drop_duplicates",
+    key_annotations_only: str = "annotations_only",
+    key_annotations_cache: str = "hyperparams_annotations",
+    key_annotations_file: str = "hyperparams_annotations_file",
 ):
-
-    label_data.loc[lambda df: df.roof_id == roof_id, "sigma"] = sigma
-    label_data.loc[
-        lambda df: df.roof_id == roof_id, "filtering_method"
-    ] = filtering_method
-    label_data.loc[
-        lambda df: df.roof_id == roof_id, "binarization_method"
-    ] = binarization_method
-    label_data.loc[
-        lambda df: df.roof_id == roof_id, "bin_adaptive_kernel"
-    ] = bin_adaptive_kernel
-    label_data.loc[
-        lambda df: df.roof_id == roof_id, "bin_composite_tolerance"
-    ] = bin_composite_tolerance
-    label_data.loc[
-        lambda df: df.roof_id == roof_id, "drawing_technique"
-    ] = drawing_technique
-
-
-def load_random_photo(roofs_list):
-    st.session_state["roof_id"] = np.random.choice(roofs_list)
-
-
-def obstacle_detection_page():
-
-    # +-------------------------------------+
-    # | Adjust title and sidebar, load data |
-    # +-------------------------------------+
-
     st.title(":house_with_garden: Obstacle Detection Dashboard")
-    st.write(
-        "Explore the results of the obstacle detection algorithm,",
-        "and adjust the hyperparameters to improve the results.",
-        "You can also save hyperparametres you chose to a Dropbox file.",
-    )
-
-    # +---------------------------------------------+
-    # | Load photos metadata from a selected folder |
-    # +---------------------------------------------+
 
     with st.sidebar:
-        (
-            chosen_folder,
-            photos_metadata,
-            photo_list,
-        ) = components.sidebar_chose_photo_folder()
 
-        st.markdown("---")
+        # +---------------------+
+        # | select data sources |
+        # +---------------------+
 
-    # +------------------------------------------+
-    # | Cache DataFrame to store hyperparameters |
-    # +------------------------------------------+
-
-    if "obstacles_hyperparameters" not in st.session_state:
-        st.session_state["obstacles_hyperparameters"] = (
-            photos_metadata[["roof_id", "imageURL"]]
-            .drop_duplicates("roof_id")
-            .sort_values("roof_id")
-            .assign(
-                sigma=np.NaN,
-                filtering_method=np.NaN,
-                binarization_method=np.NaN,
-                bin_adaptive_kernel=np.NaN,
-                bin_composite_tolerance=np.NaN,
-                drawing_technique=np.NaN,
-            )
+        obstacles_metadata, all_annotations, remaining_roofs = sidebar.configure_data(
+            key_photos_folder=key_photos_folder,
+            key_drop_duplicates=key_drop_duplicates,
+            key_annotations_cache=key_annotations_cache,
+            key_annotations_file=key_annotations_file,
+            key_annotations_only=key_annotations_only,
+            mode=mode,
+            geo_metadata=geo_metadata,
+            only_folders=only_folders,
         )
 
-    if "roofs_to_label" not in st.session_state:
-        st.session_state["roofs_to_label"] = st.session_state[
-            "obstacles_hyperparameters"
-        ].loc[lambda df: df["sigma"].isna()]
+        chosen_folder = st.session_state[key_photos_folder]
 
-    obstacles_hyperparameters = st.session_state["obstacles_hyperparameters"]
-    roofs_to_label = st.session_state["roofs_to_label"]
+        chosen_roof_id = buttons.choose_roof_id(obstacles_metadata, remaining_roofs)
 
-    # +----------------+
-    # | Choose roof id |
-    # +----------------+
+        # +-------------------+
+        # | labelling actions |
+        # +-------------------+
 
-    with st.sidebar:
+        st.markdown("## :control_knobs: Model Hyperparameters")
 
-        st.subheader("Target Roof")
+        annotations_cache = st.session_state[key_annotations_cache]
 
-        # roof ID randomizer
-        # ------------------
-        st.write("Choose a roof ID randomly...")
-
-        buf, st_rand, buf = st.columns((2, 1, 2))
-
-        st_rand.button("🔀", on_click=load_random_photo, args=(roofs_to_label,))
-
-        # roof ID selector
-        # ----------------
-        st.write("...or manually:")
-        chosen_roof_id = st.selectbox(
-            "Roof identifier:",
-            options=roofs_to_label,
-            help="Identifier of the roof, whose label we want to inspect.",
-            key="roof_id",
+        st.info(
+            f"Roofs annotated so far: {annotations_cache.shape[0]} "
+            f"Roofs annotated in {st.session_state[key_annotations_file]}:"
+            f"{all_annotations.shape[0]}"
         )
-
-        st.markdown("---")
-
-    k2_labelled_image, bgr_roof, greyscale_roof = utils.load_and_crop_roof_from_roof_id(
-        int(chosen_roof_id), photos_metadata, chosen_folder
-    )
-    # +-----------------------------+
-    # | Obstacle Detection Pipeline |
-    # +-----------------------------+
-
-    st.subheader(f"Target roof's identifier: `{chosen_roof_id}`")
-
-    with st.sidebar:
-
-        st_subheader, st_save_params = st.columns((4, 1))
-
-        st_subheader.subheader("Model Hyperparameters")
 
         chosen_sigma = st.slider(
-            "Insert sigma for filtering (positive, odd integer):",
+            "Filtering sigma (positive, odd integer):",
             min_value=1,
             step=2,
-            key="sigma",
         )
 
         chosen_filtering_method = st.radio(
             "Choose filtering method:",
             options=("Bilateral", "Gaussian"),
-            key="filtering_method",
         )
 
         chosen_binarisation_method = st.radio(
             "Select the desired binarisation method",
             options=("Simple", "Adaptive", "Composite"),
-            key="binarization_method",
         )
 
         if chosen_binarisation_method == "Adaptive":
@@ -170,7 +83,6 @@ def obstacle_detection_page():
                 min_value=-1,
                 max_value=255,
                 step=2,
-                key="bin_adaptive_kernel",
             )
             chosen_tolerance = None
         elif chosen_binarisation_method == "Composite":
@@ -181,33 +93,43 @@ def obstacle_detection_page():
                 """,
                 min_value=-1,
                 max_value=255,
-                key="bin_composite_tolerance",
             )
             chosen_blocksize = None
         else:
             chosen_blocksize, chosen_tolerance = None, None
 
-        chosen_drawing_technique = st.radio(
+        boundary_type = st.radio(
             "Select the desired drawing technique",
             options=("Bounding Box", "Bounding Polygon"),
-            key="drawing_technique",
         )
 
-        st_save_params.button(
-            "💾",
-            help="Record Hyperparameters",
-            on_click=annotate_hyperparameters,
-            args=(
-                chosen_roof_id,
-                obstacles_hyperparameters,
-                chosen_sigma,
-                chosen_filtering_method,
-                chosen_binarisation_method,
-                chosen_blocksize,
-                chosen_tolerance,
-                chosen_drawing_technique,
-            ),
+        annotations = {
+            "sigma": chosen_sigma,
+            "filtering_method": chosen_filtering_method,
+            "binarization_method": chosen_binarisation_method,
+            "blocksize": chosen_blocksize,
+            "tolerance": chosen_tolerance,
+            "boundary_type": boundary_type,
+        }
+
+        sidebar.write_and_save_annotations(
+            new_annotations=annotations,
+            annotations_data=all_annotations,
+            annotations_savefile=st.session_state[key_annotations_file],
+            roof_id=chosen_roof_id,
+            photos_folder=chosen_folder,
+            metadata=obstacles_metadata,
+            key_annotations_cache=key_annotations_cache,
+            mode=mode,
         )
+
+    # +-------------------------+
+    # | Roof & Color Histograms |
+    # +-------------------------+
+
+    photo, roof, labelled_photo, _labelled_roof = utils.st_load_photo_and_roof(
+        int(chosen_roof_id), obstacles_metadata, chosen_folder
+    )
 
     (
         obstacle_blobs,
@@ -215,62 +137,36 @@ def obstacle_detection_page():
         obstacles_coordinates,
         filtered_gs_roof,
     ) = utils.obstacle_detection_pipeline(
-        greyscale_roof=greyscale_roof,
+        roof=roof,
         sigma=chosen_sigma,
         filtering_method=chosen_filtering_method,
         binarization_method=chosen_binarisation_method,
         blocksize=chosen_blocksize,
         tolerance=chosen_tolerance,
-        boundary_type=chosen_drawing_technique,
+        boundary_type=boundary_type,
         return_filtered_roof=True,
     )
 
-    # +-------------------------+
-    # | Roof & Color Histograms |
-    # +-------------------------+
+    if chosen_roof_id in all_annotations.roof_id.values:
+        st.info(f"Roof {chosen_roof_id} is already annotated")
+    else:
+        st.warning(f"Roof {chosen_roof_id} is not annotated")
 
-    st_roof, st_histograms = st.columns((1, 1))
+    st_roof, st_labelled_roof = st.columns((1, 1))
 
-    # original roof
-    # -------------
     st_roof.image(
-        k2_labelled_image,
+        photo,
         use_column_width=True,
         channels="BGRA",
-        caption="Original image with database labels",
+        caption="Satellite photo",
     )
 
-    # RGB color histogram
-    # -------------------
-    fig, ax = plt.subplots(figsize=(3, 1))
-
-    n, bins, patches = ax.hist(
-        bgr_roof[:, :, 0].flatten(), bins=50, edgecolor="blue", alpha=0.5
+    st_labelled_roof.image(
+        labelled_photo,
+        use_column_width=True,
+        channels="BGRA",
+        caption="Satellite photo, labelled",
     )
-    n, bins, patches = ax.hist(
-        bgr_roof[:, :, 1].flatten(), bins=50, edgecolor="green", alpha=0.5
-    )
-    n, bins, patches = ax.hist(
-        bgr_roof[:, :, 2].flatten(), bins=50, edgecolor="red", alpha=0.5
-    )
-
-    ax.set_title("Cropped Roof RGB Histogram")
-    ax.set_xlim(0, 255)
-
-    st_histograms.pyplot(fig, use_column_width=True)
-
-    # greyscale histogram
-    # -------------------
-    fig, ax = plt.subplots(figsize=(3, 1))
-
-    n, bins, patches = ax.hist(
-        filtered_gs_roof.flatten(), bins=range(256), edgecolor="black", alpha=0.9
-    )
-
-    ax.set_title("Roof Greyscale Histogram After Filtering")
-    ax.set_xlim(0, 255)
-
-    st_histograms.pyplot(fig, use_column_width=True)
 
     # +--------------------+
     # | Plot Model Results |
@@ -281,7 +177,7 @@ def obstacle_detection_page():
     st_results_widgets = st.columns((1, 1))
 
     st_results_widgets[0].image(
-        bgr_roof,
+        roof,
         use_column_width=True,
         channels="BGRA",
         caption="Cropped Roof (RGB) with Database Labels",
@@ -302,18 +198,8 @@ def obstacle_detection_page():
     st_results_widgets[1].image(
         roof_with_bboxes,
         use_column_width=True,
-        caption=f"Auto Labelled {chosen_drawing_technique}",
+        caption=f"Auto Labelled {boundary_type}",
     )
 
-    st_data, st_save = st.columns((6, 1))
-
-    with st_data:
-        with st.expander("View stored hyperparameters"):
-            st.dataframe(obstacles_hyperparameters.dropna(subset="sigma"))
-
-    if st_save.button("💾", help="Save hyperparameters to Dropbox"):
-        utils.save_annotations_to_dropbox(
-            obstacles_hyperparameters.dropna(subset="sigma"),
-            "obstacles-annotated_hyperparameters",
-            DROPBOX_HYPERPARAM_ANNOTATIONS_PATH,
-        )
+    with st.expander("View the annotations:", expanded=True):
+        st.dataframe(all_annotations)
