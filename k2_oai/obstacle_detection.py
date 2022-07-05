@@ -244,7 +244,7 @@ def morphological_opening_step(
 def _get_bounding_boxes(input_image, stats, margins, min_area):
     bounding_box_coordinates = []
 
-    for i in range(0, stats.shape[0]):
+    for i in range(1, stats.shape[0]):
 
         # if stats[i, cv.CC_STAT_AREA] > min_area:
         top_left_px = (
@@ -268,7 +268,7 @@ def _get_bounding_boxes(input_image, stats, margins, min_area):
 def _get_bounding_polygon(blobs, background, stats, min_area):
     polygon_coordinates = []
 
-    for i in range(0, stats.shape[0]):
+    for i in range(1, stats.shape[0]):
 
         # if stats[i, cv.CC_STAT_AREA] > min_area:
         obst_im = (blobs == i) * 255
